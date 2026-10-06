@@ -1,0 +1,54 @@
+============================================================
+DYNAMIC LANDSLIDE RISK REPORT
+============================================================
+
+Baseline model: CatBoost (Historical)
+Baseline susceptibility source: taking_feature/maps/landslide_susceptibility_probability.tif
+Current rainfall source: Open-Meteo (Grid interpolation)
+Rainfall timestamp: 2026-08-29 10:54:21
+
+RAINFALL DATA (Mean values across region):
+24h rainfall: YES
+3-day rainfall: YES
+7-day rainfall: YES
+14-day rainfall: YES
+30-day rainfall: YES
+24h forecast: YES
+72h forecast: YES
+
+Sentinel-1 status = UNAVAILABLE
+Note: Current Sentinel-1 unavailable; dynamic risk calculation uses baseline susceptibility plus current/forecast rainfall.
+
+DYNAMIC RISK METHODOLOGY
+Formula: 
+- Rainfall_Score = (R_24h * 1.0) + (R_3d * 0.8) + (R_7d * 0.5) + (R_14d * 0.2) + (R_30d * 0.1)
+- Multiplier = 1.0 + (Rainfall_Score / 150.0)
+- Dynamic Risk = min(1.0, Baseline_Susceptibility * Multiplier)
+
+Assumptions: 
+- 150.0 acts as a proxy Extreme Risk Threshold to scale the probabilities appropriately.
+- Forecast rainfall is added linearly to the Rainfall_Score for future risk projection.
+Limitations: 
+- Due to the absence of a localized historical climatology baseline, the Antecedent Precipitation Index (API) is used to scale probability instead of an exact statistical anomaly mapping. 
+- The rainfall data is downscaled from a coarse 0.1-degree meteorological grid to a 90m resolution raster using nearest-neighbor interpolation.
+
+VALIDATION
+CRS: EPSG:4326
+Dimensions: 31788 x 21483
+Minimum: 0.0085
+Maximum: 1.0000
+Mean: 0.4392
+NoData Count: 222220479
+NaN Count: 0
+Infinity Count: 0
+Range 0-1 Confirmed: PASS
+
+FINAL OUTPUT
+Current rainfall: YES
+Recent rainfall: YES
+24h forecast: YES
+72h forecast: YES
+Current Sentinel-1: NO
+
+Dynamic rainfall risk: READY
+Current risk raster: CREATED

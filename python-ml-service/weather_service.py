@@ -1,0 +1,128 @@
+import httpx
+import logging
+from datetime import datetime, timezone, timedelta
+import time
+from dateutil import parser
+
+logger = logging.getLogger(__name__)
+
+# Simple in-memory cache to prevent excessive API requests
+# cache format: {(lat, lon): {"data": {...}, "timestamp": float}}
+_weather_cache = {}
+CACHE_TTL_SECONDS = 15 * 60  # 15 minutes
+
+async def fetch_weather_data(lat: float, lon: float):
+    """
+    Fetches past and forecast rainfall from Open-Meteo for the given lat/lon.
+    Uses an in-memory cache valid for 15 minutes.
+    """
+    cache_key = (round(lat, 4), round(lon, 4))
+    now = time.time()
+    
+    # Check cache
+    if cache_key in _weather_cache:
+        cached = _weather_cache[cache_key]
+        if now - cached["timestamp"] < CACHE_TTL_SECONDS:
+            logger.info(f"Using cached weather data for {cache_key}")
+            return cached["data"]
+
+    # Open-Meteo requires past days and forecast days
+    # We need: 30 days past for antecedent rainfall, and 3 days forecast for 72h forecast
+    url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": "precipitation,soil_moisture_0_to_7cm",
+        "timezone": "auto",
+        "past_days": 31,
+        "forecast_days": 4
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params=params, timeout=10.0)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Process the response to get our specific metrics
+            metrics = process_weather_data(data)
+            metrics["retrieved_at"] = datetime.now(timezone.utc).isoformat()
+            metrics["source"] = "Open-Meteo"
+            
+            # Update cache
+            _weather_cache[cache_key] = {
+                "data": metrics,
+                "timestamp": now
+            }
+            
+            return metrics
+            
+    except Exception as e:
+        logger.error(f"Failed to fetch weather for {lat}, {lon}: {repr(e)}")
+        # Graceful fallback instead of crashing
+        return {
+            "rainfall": {"24h_mm": 0, "3d_mm": 0, "7d_mm": 0, "14d_mm": 0, "30d_mm": 0},
+            "forecast": {"24h_mm": 0, "72h_mm": 0},
+            "soil_moisture": {"available": False, "value": None, "unit": "m³/m³", "metric": "Topsoil Moisture", "depth": "0-7 cm", "source": "Fallback (API Error)"},
+            "retrieved_at": datetime.now(timezone.utc).isoformat(),
+            "source": "Fallback"
+        }
+
+def process_weather_data(data: dict) -> dict:
+    """
+    Extracts past/forecast rainfall and current soil moisture.
+    """
+    hourly_time = data["hourly"]["time"]
+    hourly_precip = data["hourly"]["precipitation"]
+    hourly_soil = data["hourly"].get("soil_moisture_0_to_7cm", [])
+    
+    times = [parser.parse(t) for t in hourly_time]
+    
+    current_index = 31 * 24
+    if current_index >= len(times):
+        current_index = len(times) - (4 * 24)
+        
+    past_precip = hourly_precip[:current_index]
+    forecast_precip = hourly_precip[current_index:]
+    
+    def sum_last_n(n_days):
+        n_hours = n_days * 24
+        if n_hours > len(past_precip):
+            n_hours = len(past_precip)
+        slice_vals = past_precip[-n_hours:]
+        return sum([p for p in slice_vals if p is not None])
+        
+    def sum_next_n(n_days):
+        n_hours = n_days * 24
+        if n_hours > len(forecast_precip):
+            n_hours = len(forecast_precip)
+        slice_vals = forecast_precip[:n_hours]
+        return sum([p for p in slice_vals if p is not None])
+        
+    # Extract current soil moisture
+    current_soil_moisture = None
+    if current_index < len(hourly_soil):
+        current_soil_moisture = hourly_soil[current_index]
+
+    metrics = {
+        "rainfall": {
+            "24h_mm": round(sum_last_n(1), 2),
+            "3d_mm": round(sum_last_n(3), 2),
+            "7d_mm": round(sum_last_n(7), 2),
+            "14d_mm": round(sum_last_n(14), 2),
+            "30d_mm": round(sum_last_n(30), 2)
+        },
+        "forecast": {
+            "24h_mm": round(sum_next_n(1), 2),
+            "72h_mm": round(sum_next_n(3), 2)
+        },
+        "soil_moisture": {
+            "available": current_soil_moisture is not None,
+            "value": current_soil_moisture,
+            "unit": "m³/m³",
+            "metric": "Topsoil Moisture",
+            "depth": "0-7 cm",
+            "source": "Open-Meteo"
+        }
+    }
+    return metrics

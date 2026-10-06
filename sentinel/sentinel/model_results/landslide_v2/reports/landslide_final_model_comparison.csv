@@ -1,0 +1,4 @@
+Model,Feature Set,Accuracy,Precision,Recall,F1,ROC-AUC,Sensitivity,Specificity,Balanced Accuracy
+XGBoost,Top 15,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0
+CatBoost,Top 15,0.9937238493723849,1.0,0.9871244635193133,0.9935205183585313,1.0,0.9871244635193133,1.0,0.9935622317596566
+LightGBM,Top 15,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0

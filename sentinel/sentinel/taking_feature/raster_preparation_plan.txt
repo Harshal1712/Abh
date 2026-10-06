@@ -1,0 +1,119 @@
+tri
+→ direct
+→ tri.tif
+→ None
+→ Must align to S1 grid
+→ Resample/Clip
+→ tri_aligned.tif
+
+rainfall
+→ direct
+→ rainfall.tif
+→ None
+→ Must align to S1 grid
+→ Resample/Clip
+→ rainfall_aligned.tif
+
+slope
+→ direct
+→ slope.tif
+→ None
+→ Must align to S1 grid
+→ Resample/Clip
+→ slope_aligned.tif
+
+dem
+→ direct
+→ dem.tif
+→ None
+→ Must align to S1 grid
+→ Resample/Clip
+→ dem_aligned.tif
+
+aspect
+→ direct
+→ aspect.tif
+→ None
+→ Must align to S1 grid
+→ Resample/Clip
+→ aspect_aligned.tif
+
+tpi
+→ direct
+→ tpi.tif
+→ None
+→ Must align to S1 grid
+→ Resample/Clip
+→ tpi_aligned.tif
+
+S1_Sep28_VH
+→ direct
+→ S1_Sep28_VH source
+→ None
+→ Base Grid
+→ None
+→ S1_Sep28_VH_aligned.tif
+
+VV_change
+→ engineered
+→ S1 source rasters
+→ S1_Sep28_VV - S1_Jun12_VV
+→ Sources must be aligned
+→ Raster Math (band math)
+→ VV_change_aligned.tif
+
+S1_Aug23_VH
+→ direct
+→ S1_Aug23_VH source
+→ None
+→ Base Grid
+→ None
+→ S1_Aug23_VH_aligned.tif
+
+S1_Aug23_VV
+→ direct
+→ S1_Aug23_VV source
+→ None
+→ Base Grid
+→ None
+→ S1_Aug23_VV_aligned.tif
+
+S1_Jul06_VV
+→ direct
+→ S1_Jul06_VV source
+→ None
+→ Base Grid
+→ None
+→ S1_Jul06_VV_aligned.tif
+
+S1_Aug11_VH
+→ direct
+→ S1_Aug11_VH source
+→ None
+→ Base Grid
+→ None
+→ S1_Aug11_VH_aligned.tif
+
+S1_Jul18_VH
+→ direct
+→ S1_Jul18_VH source
+→ None
+→ Base Grid
+→ None
+→ S1_Jul18_VH_aligned.tif
+
+S1_Jul30_VV
+→ direct
+→ S1_Jul30_VV source
+→ None
+→ Base Grid
+→ None
+→ S1_Jul30_VV_aligned.tif
+
+VH_change
+→ engineered
+→ S1 source rasters
+→ S1_Sep28_VH - S1_Jun12_VH
+→ Sources must be aligned
+→ Raster Math (band math)
+→ VH_change_aligned.tif

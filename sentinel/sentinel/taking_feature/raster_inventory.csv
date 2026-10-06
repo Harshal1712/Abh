@@ -1,0 +1,16 @@
+Feature,Required raster,Found/Not Found,Full path,CRS,Resolution,Width,Height,Extent,NoData,Data type
+tri,tri.tif,Found,C:\Users\abhis\Documents\Ai project\Sih\Processing\assam_TRI.tif,EPSG:4326,0.00026949458523585647x0.00026949458523585647,24120.0,16100.0,"89.49996024058365,23.999840288179197,96.0001696364725,28.338703110476487",-9999.0,float32
+rainfall,rainfall.tif,FOUND,C:\Users\abhis\Documents\Ai project\Sih\sentinel\sentinel\taking_feature\final_predictor_stack\assam_rainfall_aligned.tif,,,,,,,
+slope,slope.tif,Found,C:\Users\abhis\Documents\Ai project\Sih\Processing\assam_slope.tif,EPSG:4326,0.00026949458523585647x0.00026949458523585647,24120.0,16100.0,"89.49996024058365,23.999840288179197,96.0001696364725,28.338703110476487",-9999.0,float32
+dem,dem.tif,Found,C:\Users\abhis\Documents\Ai project\Sih\Processing\assam_glo30_dem.tif,EPSG:4326,0.00026949458523585647x0.00026949458523585647,24120.0,16100.0,"89.49996024058365,23.999840288179197,96.0001696364725,28.338703110476487",,float32
+aspect,aspect.tif,Found,C:\Users\abhis\Documents\Ai project\Sih\Processing\assam_aspect.tif,EPSG:4326,0.00026949458523585647x0.00026949458523585647,24120.0,16100.0,"89.49996024058365,23.999840288179197,96.0001696364725,28.338703110476487",-9999.0,float32
+tpi,tpi.tif,Found,C:\Users\abhis\Documents\Ai project\Sih\Processing\assam_TPI.tif,EPSG:32646,30.0x30.0,22046.0,16183.0,"143857.5238504024,2654212.6107622865,805237.5238504023,3139702.6107622865",-9999.0,float32
+S1_Sep28_VH,S1_Sep28_VH.tif,Not Found,,,,,,,,
+VV_change,VV_change.tif,Not Found,,,,,,,,
+S1_Aug23_VH,S1_Aug23_VH.tif,Not Found,,,,,,,,
+S1_Aug23_VV,S1_Aug23_VV.tif,Not Found,,,,,,,,
+S1_Jul06_VV,S1_Jul06_VV.tif,Not Found,,,,,,,,
+S1_Aug11_VH,S1_Aug11_VH.tif,Not Found,,,,,,,,
+S1_Jul18_VH,S1_Jul18_VH.tif,Not Found,,,,,,,,
+S1_Jul30_VV,S1_Jul30_VV.tif,Not Found,,,,,,,,
+VH_change,VH_change.tif,Not Found,,,,,,,,

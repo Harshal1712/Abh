@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PRALAY-SENSE — Demo Script</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+.page{max-width:960px;margin:0 auto;padding:40px 24px 100px}
+
+/* HEADER */
+.header{background:linear-gradient(135deg,#312e81,#4338ca,#6366f1);border-radius:24px;padding:48px 40px;margin-bottom:40px;text-align:center;position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:rgba(255,255,255,.05);border-radius:50%}
+.header h1{font-size:2.6rem;font-weight:900;letter-spacing:-1.5px;color:#fff}
+.header .sub{font-size:1.05rem;color:#c7d2fe;margin-top:10px}
+.header .meta{display:flex;justify-content:center;gap:16px;margin-top:20px;flex-wrap:wrap}
+.header .tag{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:5px 18px;font-size:.8rem;font-weight:700;color:#e0e7ff;letter-spacing:.06em}
+
+/* INTRO BOX */
+.intro{background:#1e293b;border:1px solid #334155;border-left:4px solid #6366f1;border-radius:14px;padding:20px 24px;margin-bottom:36px;font-size:.95rem;color:#94a3b8}
+.intro strong{color:#e2e8f0}
+
+/* TIMELINE */
+.timeline{position:relative}
+.timeline::before{content:'';position:absolute;left:28px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,#4338ca,#0ea5e9,#10b981);border-radius:999px}
+
+/* STEP */
+.step{display:flex;gap:24px;margin-bottom:32px}
+.step-num{flex-shrink:0;width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:900;z-index:1;border:2px solid}
+.step-body{flex:1;background:#1e293b;border:1px solid #334155;border-radius:16px;overflow:hidden;transition:border-color .2s}
+.step-body:hover{border-color:#4338ca}
+
+.step-header{padding:16px 20px;display:flex;align-items:center;justify-content:between;gap:12px;border-bottom:1px solid #334155}
+.step-title{font-size:1rem;font-weight:800;flex:1}
+.step-time{font-size:.75rem;font-weight:700;background:#0f172a;border-radius:999px;padding:3px 12px;color:#64748b;white-space:nowrap}
+.step-content{padding:16px 20px}
+.step-content p{font-size:.9rem;color:#94a3b8;margin-bottom:10px}
+.step-content p:last-child{margin-bottom:0}
+
+/* SAY / DO / HIGHLIGHT boxes */
+.box{border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:.875rem}
+.box-label{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.say{background:#1e1b4b;border:1px solid #3730a3}
+.say .box-label{color:#818cf8}
+.say p{color:#c7d2fe;font-style:italic;line-height:1.6}
+.say p::before{content:'"'}
+.say p::after{content:'"'}
+.do{background:#0c1a12;border:1px solid #166534}
+.do .box-label{color:#4ade80}
+.do ul{padding-left:18px}
+.do ul li{color:#86efac;margin-bottom:3px}
+.highlight{background:#1c1007;border:1px solid #92400e}
+.highlight .box-label{color:#f59e0b}
+.highlight ul{padding-left:18px}
+.highlight ul li{color:#fcd34d;margin-bottom:3px}
+.warn{background:#1c0a0a;border:1px solid #991b1b}
+.warn .box-label{color:#f87171}
+.warn p{color:#fca5a5}
+
+/* PHASE DIVIDERS */
+.phase{text-align:center;margin:40px 0 28px;position:relative}
+.phase::before,.phase::after{content:'';position:absolute;top:50%;width:calc(50% - 120px);height:1px;background:#334155}
+.phase::before{left:0}
+.phase::after{right:0}
+.phase-inner{display:inline-block;background:#1e293b;border:1px solid #334155;border-radius:999px;padding:8px 24px;font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em}
+
+/* COLOUR VARIANTS */
+.indigo .step-num{background:#312e81;border-color:#6366f1;color:#a5b4fc}
+.indigo .step-title{color:#818cf8}
+.sky .step-num{background:#0c4a6e;border-color:#0ea5e9;color:#7dd3fc}
+.sky .step-title{color:#38bdf8}
+.emerald .step-num{background:#064e3b;border-color:#10b981;color:#6ee7b7}
+.emerald .step-title{color:#34d399}
+.amber .step-num{background:#451a03;border-color:#f59e0b;color:#fcd34d}
+.amber .step-title{color:#fbbf24}
+.rose .step-num{background:#4c0519;border-color:#f43f5e;color:#fda4af}
+.rose .step-title{color:#fb7185}
+.violet .step-num{background:#2e1065;border-color:#8b5cf6;color:#c4b5fd}
+.violet .step-title{color:#a78bfa}
+
+/* CLOSING */
+.closing{background:linear-gradient(135deg,#064e3b,#065f46);border-radius:16px;padding:28px;margin-top:40px;text-align:center}
+.closing h3{color:#34d399;font-size:1.3rem;font-weight:900;margin-bottom:10px}
+.closing p{color:#6ee7b7;font-size:.9rem}
+
+/* TIMER BAR */
+.timer-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:36px;background:#1e293b;border-radius:12px;padding:16px;border:1px solid #334155}
+.timer-seg{flex:1;min-width:100px;text-align:center;padding:8px 4px;border-radius:8px;border:1px solid #334155}
+.timer-seg .t-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin-bottom:4px}
+.timer-seg .t-val{font-size:1.1rem;font-weight:900}
+.t-i{color:#818cf8;border-color:#3730a3;background:#1e1b4b}
+.t-s{color:#38bdf8;border-color:#0c4a6e;background:#0c1a2e}
+.t-e{color:#34d399;border-color:#064e3b;background:#0c1a12}
+.t-a{color:#fbbf24;border-color:#451a03;background:#1c1007}
+.t-r{color:#fb7185;border-color:#4c0519;background:#1c0a0a}
+.t-v{color:#c4b5fd;border-color:#2e1065;background:#1a1040}
+.t-total{color:#e2e8f0;border-color:#475569;background:#0f172a}
+
+@media print{body{background:#fff;color:#1e293b}.step-body{border:1px solid #e2e8f0}.say{background:#eef2ff;border-color:#c7d2fe}.say p{color:#3730a3}.do{background:#f0fdf4;border-color:#bbf7d0}.do ul li{color:#166534}.highlight{background:#fffbeb;border-color:#fde68a}.highlight ul li{color:#92400e}.warn{background:#fff1f2;border-color:#fecdd3}.warn p{color:#9f1239}.header{background:linear-gradient(135deg,#312e81,#4338ca)}.timeline::before{background:#4338ca}.step-body{background:#f8fafc}.step-content p{color:#475569}.step-time{background:#f1f5f9;color:#64748b}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- HEADER -->
+<div class="header">
+  <h1>PRALAY-SENSE Demo Script</h1>
+  <div class="sub">Smart India Hackathon 2026 — Prototype Walkthrough for Judges</div>
+  <div class="meta">
+    <span class="tag">Team Destiny</span>
+    <span class="tag">Total Time: ~8–10 Min</span>
+    <span class="tag">6 Phases</span>
+    <span class="tag">Live Demo</span>
+  </div>
+</div>
+
+<!-- INTRO -->
+<div class="intro">
+  <strong>How to use this script:</strong> Each step has three colour-coded blocks —
+  <strong style="color:#818cf8">🟣 SAY</strong> (exact words to speak),
+  <strong style="color:#4ade80">🟢 DO</strong> (what to click/show on screen), and
+  <strong style="color:#fbbf24">🟡 HIGHLIGHT</strong> (key technical points to emphasise). Practise at least 3 times before the presentation. Keep energy high — disaster management saves lives!
+</div>
+
+<!-- TIME BUDGET -->
+<div class="timer-bar">
+  <div class="timer-seg t-i"><div class="t-label">Phase 1</div><div class="t-val">~1 min</div></div>
+  <div class="timer-seg t-s"><div class="t-label">Phase 2</div><div class="t-val">~1.5 min</div></div>
+  <div class="timer-seg t-e"><div class="t-label">Phase 3</div><div class="t-val">~2 min</div></div>
+  <div class="timer-seg t-a"><div class="t-label">Phase 4</div><div class="t-val">~1.5 min</div></div>
+  <div class="timer-seg t-r"><div class="t-label">Phase 5</div><div class="t-val">~1 min</div></div>
+  <div class="timer-seg t-v"><div class="t-label">Phase 6</div><div class="t-val">~1 min</div></div>
+  <div class="timer-seg t-total"><div class="t-label">Total</div><div class="t-val">~8–10 min</div></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="phase"><span class="phase-inner" style="color:#818cf8">Phase 1 — Opening Hook &amp; Problem</span></div>
+<!-- ══════════════════════════════════════════════════════════ -->
+
+<div class="timeline">
+
+<div class="step indigo">
+  <div class="step-num">1</div>
+  <div class="step-body">
+    <div class="step-header">
+      <div class="step-title">Opening Statement</div>
+      <div class="step-time">⏱ 0:00 – 0:45</div>
+    </div>
+    <div class="step-content">
+      <div class="box say">
+        <div class="box-label">🗣 Say</div>
+        <p>Every monsoon, Assam faces two simultaneous threats — catastrophic floods in its valleys and deadly landslides in its hills. In 2024 alone, over 2.5 million people were displaced. Existing systems give region-wide warnings. We asked: what if an AI system could pinpoint exactly which village is at risk — right now — and get an expert-verified alert to those citizens in under 20 minutes? That is PRALAY-SENSE.</p>
+      </div>
+      <div class="box do">
+        <div class="box-label">🖱 Do</div>
+        <ul>
+          <li>Stand confidently, speak slowly — let the problem land.</li>
+          <li>Have the Expert Dashboard open and visible on screen.</li>
+          <li>Do NOT click anything yet — let them absorb the dashboard visually.</li>
+        </ul>
+      </div>
+      <div class="box highlight">
+        <div class="box-label">⭐ Highlight</div>
+        <ul>
+          <li>Multi-hazard (flood + landslide simultaneously)</li>
+          <li>Expert-verified — AI assists, human decides</li>
+          <li>20 minutes end-to-end</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="step indigo">
+  <div class="step-num">2</div>
+  <div class="step-body">
+    <div class="step-header">
+      <div class="step-title">Dashboard Overview</div>
+      <div class="step-time">⏱ 0:45 – 1:15</div>
+    </div>
+    <div class="step-content">
+      <div class="box say">
+        <div class="box-label">🗣 Say</div>
+        <p>This is the Expert Dashboard — the command centre for a disaster management analyst. You can see live metric cards showing active risk events, pending reviews, alerts dispatched, and incoming citizen reports. The interactive map on the left shows Assam with real terrain data — DEM-derived susceptibility overlaid using our trained model. Every orange or red zone here was computed from real Sentinel satellite data and historical landslide inventory.</p>
+      </div>
+      <div class="box do">
+        <div class="box-label">🖱 Do</div>
+        <ul>
+          <li>Point to the 4 metric cards at the top.</li>
+          <li>Gesture broadly at the GIS map — hover over it slightly.</li>
+          <li>Point to the Priority Events list on the right panel.</li>
+        </ul>
+      </div>
+      <div class="box highlight">
+        <div class="box-label">⭐ Highlight</div>
+        <ul>
+          <li>Real terrain data — not synthetic demo data</li>
+          <li>Assam map center (26.14°N, 91.73°E)</li>
+          <li>Three-service architecture running live (React + Node + Python)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="phase"><span class="phase-inner" style="color:#38bdf8">Phase 2 — Live AI Risk Analysis (Map Click)</span></div>
+<!-- ══════════════════════════════════════════════════════════ -->
+
+<div class="step sky">
+  <div class="step-num">3</div>
+  <div class="step-body">
+    <div class="step-header">
+      <div class="step-title">Perform a Live Map Click</div>
+      <div class="step-time">⏱ 1:15 – 2:00</div>
+    </div>
+    <div class="step-content">
+      <div class="box say">
+        <div class="box-label">🗣 Say</div>
+        <p>Watch what happens when I click anywhere on the map — for example, let me click near the Kamrup Metropolitan district, which borders Guwahati. The moment I click, our system does three things simultaneously: it reads the terrain raster for that exact coordinate, fetches live rainfall data from the Open-Meteo API, and runs inference through two separate CatBoost machine learning models — one for flood, one for landslide.</p>
+      </div>
+      <div class="box do">
+        <div class="box-label">🖱 Do</div>
+        <ul>
+          <li>Click on the map near Kamrup / Guwahati area (approx 26.1°N, 91.7°E).</li>
+          <li>Let the Point Query Analysis panel slide in from the right.</li>
+          <li>Point to the loading spinner: "See — it's fetching live data right now."</li>
+          <li>Wait for results to appear (3–8 seconds).</li>
+        </ul>
+      </div>
+      <div class="box highlight">
+        <div class="box-label">⭐ Highlight</div>
+        <ul>
+          <li>This is LIVE — real API call to Python ML service running locally</li>
+          <li>Weather fetched from Open-Meteo in real-time</li>
+          <li>Terrain read from 30m GLO-30 DEM raster</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="step sky">
+  <div class="step-num">4</div>
+  <div class="step-body">
+    <div class="step-header">
+      <div class="step-title">Walk Through the Point Query Analysis Panel</div>
+      <div class="step-time">⏱ 2:00 – 2:45</div>
+    </div>
+    <div class="step-content">
+      <div class="box say">
+        <div class="box-label">🗣 Say</div>
+        <p>The results are in. On the left — the flood probability from our Flood CatBoost model. On the right — the landslide risk indicator from our Landslide CatBoost V2 model, which uses 31 geospatial features including Sentinel-1 SAR change, DEM slope, aspect, terrain ruggedness, and real-time rainfall. Below that, you can see the actual terrain values: slope in degrees, DEM elevation, aspect direction, TRI, and TPI — all read from our processed Assam rasters. The rainfall data shows 24-hour, 3-day, and 7-day cumulative values fetched live just now.</p>
+      </div>
+      <div class="box do">
+        <div class="box-label">🖱 Do</div>
+        <ul>
+          <li>Point to the Flood % and Landslide % bars.</li>
+          <li>Scroll down the side panel — point to terrain values (slope, DEM, aspect).</li>
+          <li>Point to the rainfall section (24h, 3d, 7d values).</li>
+          <li>Point to the Sentinel-1 SAR change value if shown.</li>
+          <li>Point to the soil moisture value.</li>
+        </ul>
+      </div>
+      <div class="box highlight">
+        <div class="box-label">⭐ Highlight</div>
+        <ul>
+          <li>31 real features — not hardcoded values</li>
+          <li>Sentinel-1 VV/VH backscatter (cloud-penetrating SAR)</li>
+          <li>Soil moisture from Open-Meteo (0–7 cm depth)</li>
+          <li>Both models run independently — flood ≠ landslide model</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="step sky">
+  <div class="step-num">5</div>
+  <div class="step-body">
+    <div class="step-header">
+      <div class="step-title">Create a Risk Event</div>
+      <div class="step-time">⏱ 2:45 – 3:15</div>
+    </div>
+    <div class="step-content">
+      <div class="box say">
+        <div class="box-label">🗣 Say</div>
+        <p>Based on this analysis, let's say our expert decides this location warrants monitoring. One click on "Create Risk Event" — and this assessment is instantly saved to our MongoDB database, stamped with the satellite data, AI probabilities, and terrain readings. The panel closes automatically and the new event appears in the Priority Events list, flagged as PENDING REVIEW.</p>
+      </div>
+      <div class="box do">
+        <div class="box-label">🖱 Do</div>
+        <ul>
+          <li>Click the "Create Risk Event" button at the bottom of the panel.</li>
+          <li>Panel closes — show the new event card appearing in the right-side list.</li>
+          <li>Point to its PENDING REVIEW badge.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="phase"><span class="phase-inner" style="color:#34d399">Phase 3 — Expert Review &amp; Explainable AI</span></div>
+<!-- ══════════════════════════════════════════════════════════ -->
+
+<div class="step emerald">
+  <div class="step-num">6</div>
+  <div class="step-body">
+    <div class="step-header">
+      <div class="step-title">Open the Expert Review Panel</div>
+      <div class="step-time">⏱ 3:15 – 4:00</div>
+    </div>
+    <div class="step-content">
+      <div class="box say">
+        <div class="box-label">🗣 Say</div>
+        <p>Now we enter the Expert Review Panel — the most critical part of our architecture. This is where a trained domain expert — a geologist, hydrology analyst, or NDMA officer — reviews the AI's reasoning before any alert reaches the public. This Expert-in-the-Loop design is what separates PRALAY-SENSE from a black-box AI system.</p>
+      </div>
+      <div class="box do">
+        <div class="box-label">🖱 Do</div>
+        <ul>
+          <li>Click "Expert Review" in the navigation sidebar.</li>
+          <li>The current event loads automatically with all AI data.</li>
+          <li>Gesture broadly at the full panel — it's rich, let it breathe.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="step emerald">
+  <div class="step-num">7</div>
+  <div class="step-body">
+    <div class="step-header">
+      <div class="step-title">Show AI Risk Analysis &amp; Feature Attribution</div>
+      <div class="step-time">⏱ 4:00 – 5:00</div>
+    </div>
+    <div class="step-content">
+      <div class="box say">
+        <div class="box-label">🗣 Say</div>
+        <p>Navigate to the AI Risk Analysis page. Here the expert sees not just the risk score — but WHY the model made this prediction. The Key Contributing Factors section shows ranked feature attribution — in this case, the terrain slope is the dominant factor at over 40%, followed by recent rainfall and SAR change. This is explainable AI — the expert can look at the evidence, agree or disagree, and make an informed decision. A pure black-box AI score without this context is dangerous for emergency management.</p>
+      </div>
+      <div class="box do">
+        <div class="box-label">🖱 Do</div>
+        <ul>
+          <li>Click "AI Risk Analysis" in the sidebar or navigate to it.</li>
+          <li>Point to the big risk score percentage at the top.</li>
+          <li>Scroll to the "Key Contributing Factors" section.</li>
+          <li>Point to each ranked factor card — #1, #2, #3.</li>
+          <li>Point to the "Value" and "Contribution %" for each factor.</li>
+        </ul>
+      </div>
+      <div class="box highlight">
+        <div class="box-label">⭐ Highlight</div>
+        <ul>
+          <li>This is REAL model feature importance — not hardcoded</li>
+          <li>CatBoost's get_feature_importance() called in risk_engine.py</li>
+          <li>Each % is computed from the actual 31-feature inference</li>
+          <li>Expert can validate: "Is the slope really that steep? Let me check the DEM value."</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="step emerald">
+  <div class="step-num">8</div>
+  <div class="step-body">
+    <div class="step-header">
+      <div class="step-title">Expert Decision — Approve the Alert</div>
+      <div class="step-time">⏱ 5:00 – 5:45</div>
+    </div>
+    <div class="step-content">
+      <div class="box say">
+        <div class="box-label">🗣 Say</div>
+        <p>The expert has reviewed the evidence. The slope is steep, rainfall is elevated, and the SAR signal confirms surface moisture change. Our expert clicks "APPROVE ALERT". A confirmation modal appears — showing a final preview of the event details: the affected area, hazard type, severity, and the alert message that will go out to citizens. This is the last gate before public dispatch.</p>
+      </div>
+      <div class="box do">
+        <div class="box-label">🖱 Do</div>
+        <ul>
+          <li>Go back to Expert Review page.</li>
+          <li>Click the green "APPROVE ALERT" button.</li>
+          <li>The ConfirmationModal opens — point to each field.</li>
+          <li>Click "Confirm &amp; Proceed to Alert" to approve.</li>
+        </ul>
+      </div>
+      <div class="box highlight">
+        <div class="box-label">⭐ Highlight</div>
+        <ul>
+          <li>No alert ever auto-sends — always requires human confirmation</li>
+          <li>The modal shows EXACTLY what citizens will receive</li>
+          <li>Audit trail: every approval is timestamped and stored</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="phase"><span class="phase-inner" style="color:#fbbf24">Phase 4 — Alert Management &amp; Multilingual Dispatch</span></div>
+<!-- ══════════════════════════════════════════════════════════ -->
+
+<div class="step amber">
+  <div class="step-num">9</div>
+  <div class="step-body">
+    <div class="step-header">
+      <div class="step-title">Alert Management — Multilingual Editor</div>
+      <div class="step-time">⏱ 5:45 – 6:30</div>
+    </div>
+    <div class="step-content">
+      <div class="box say">
+        <div class="box-label">🗣 Say</div>
+        <p>The approved event now moves to Alert Management. Here, the expert can review and edit the alert message in three languages — English, Hindi, and Assamese — to ensure last-mile reach. This is critical: a fisherman in rural Assam receiving a WhatsApp message in Assamese understands it far better than an English technical bulletin. The expert can also adjust the alert severity and affected area before publishing.</p>
+      </div>
+      <div class="box do">
+        <div class="box-label">🖱 Do</div>
+        <ul>
+          <li>Click "Alert Management" in the sidebar.</li>
+          <li>Select the newly approved alert.</li>
+          <li>Show the language toggle — click "Hindi" then "Assamese (অসমীয়া)".</li>
+          <li>Point to the editable text area for each language.</li>
+          <li>Click "Preview Alert" — show the Mobile Citizen Preview.</li>
+        </ul>
+      </div>
+      <div class="box highlight">
+        <div class="box-label">⭐ Highlight</div>
+        <ul>
+          <li>English + Hindi + Assamese (অসমীয়া) — real local language</li>
+          <li>iOS-style Mobile Preview shows exactly what citizen sees</li>
+          <li>Expert can edit message before dispatch</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="step amber">
+  <div class="step-num">10</div>
+  <div class="step-body">
+    <div class="step-header">
+      <div class="step-title">Publish Alert — WhatsApp + Gmail Dispatch</div>
+      <div class="step-time">⏱ 6:30 – 7:00</div>
+    </div>
+    <div class="step-content">
+      <div class="box say">
+        <div class="box-label">🗣 Say</div>
+        <p>The expert is satisfied. Click "Publish Alert". Our backend immediately triggers two parallel dispatch channels — Twilio for WhatsApp notifications and Nodemailer for Gmail alerts — reaching all registered citizens within the 5-km radius of the reported location. The System Dispatch confirmation shows how many WhatsApp messages and emails were sent.</p>
+      </div>
+      <div class="box do">
+        <div class="box-label">🖱 Do</div>
+        <ul>
+          <li>Click the "Publish Alert" / "Send Alert" button.</li>
+          <li>The System Dispatch modal appears — point to the WhatsApp and Gmail counts.</li>
+          <li>Click "Acknowledge Dispatch" to close.</li>
+        </ul>
+      </div>
+      <div class="box highlight">
+        <div class="box-label">⭐ Highlight</div>
+        <ul>
+          <li>Twilio SDK + Nodemailer — real dispatch (not simulated)</li>
+          <li>Parallel send: WhatsApp + Gmail simultaneously</li>
+          <li>Full audit log: who approved, when dispatched, how many reached</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="phase"><span class="phase-inner" style="color:#fb7185">Phase 5 — Citizen Portal &amp; Ground Truth</span></div>
+<!-- ══════════════════════════════════════════════════════════ -->
+
+<div class="step rose">
+  <div class="step-num">11</div>
+  <div class="step-body">
+    <div class="step-header">
+      <div class="step-title">Citizen Portal — Alert View &amp; Report Submission</div>
+      <div class="step-time">⏱ 7:00 – 7:45</div>
+    </div>
+    <div class="step-content">
+      <div class="box say">
+        <div class="box-label">🗣 Say</div>
+        <p>Now let's switch perspective — from the expert to the citizen. Our system also includes a Citizen Portal. Here, a resident of the affected area can see active alerts for their location. But more importantly — they can submit a ground-truth report. If they see flooding or a landslide, they take a photo, the system automatically extracts the GPS coordinates from the image's EXIF data, and the report is submitted directly to the expert dashboard for validation. This creates a feedback loop: satellite AI predicts, expert validates, and citizens confirm.</p>
+      </div>
+      <div class="box do">
+        <div class="box-label">🖱 Do</div>
+        <ul>
+          <li>Navigate to the Citizen Portal (or switch to the citizen role if there's a role toggle).</li>
+          <li>Show the active alerts section.</li>
+          <li>Click "Submit Report" — show the photo upload form.</li>
+          <li>Point to the location auto-detect feature.</li>
+        </ul>
+      </div>
+      <div class="box highlight">
+        <div class="box-label">⭐ Highlight</div>
+        <ul>
+          <li>EXIF geolocation extraction — no manual coordinate entry needed</li>
+          <li>Photo stored on Cloudinary CDN — not local storage</li>
+          <li>Feedback loop closes the validation cycle</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="phase"><span class="phase-inner" style="color:#c4b5fd">Phase 6 — Closing Impact Statement</span></div>
+<!-- ══════════════════════════════════════════════════════════ -->
+
+<div class="step violet">
+  <div class="step-num">12</div>
+  <div class="step-body">
+    <div class="step-header">
+      <div class="step-title">Active Events Table — Full System View</div>
+      <div class="step-time">⏱ 7:45 – 8:15</div>
+    </div>
+    <div class="step-content">
+      <div class="box say">
+        <div class="box-label">🗣 Say</div>
+        <p>Finally, the Active Events page gives the operations centre a full tabular overview — every risk event with its location, flood risk percentage, landslide risk percentage, priority, confidence, and current status. Analysts can filter by severity, sort by risk score, and open any event for deep analysis. This is the operational layer that a State Disaster Management Authority like ASDMA would use during an active monsoon season.</p>
+      </div>
+      <div class="box do">
+        <div class="box-label">🖱 Do</div>
+        <ul>
+          <li>Navigate to "Active Events" in the sidebar.</li>
+          <li>Point to the columns: Flood Risk %, Landslide Risk %, Priority, Confidence, Status.</li>
+          <li>Click the eye icon on one event to open the detail view.</li>
+          <li>Come back to the dashboard as your final view.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="step violet">
+  <div class="step-num">13</div>
+  <div class="step-body">
+    <div class="step-header">
+      <div class="step-title">Closing Statement</div>
+      <div class="step-time">⏱ 8:15 – 9:00</div>
+    </div>
+    <div class="step-content">
+      <div class="box say">
+        <div class="box-label">🗣 Say</div>
+        <p>What you just saw was a complete end-to-end disaster intelligence workflow — from a satellite pixel to a citizen WhatsApp alert — in under 10 minutes. PRALAY-SENSE is not a demo with hardcoded values. Every number you saw was computed live from real Assam terrain data, real Sentinel satellite imagery, and a real weather API. Our unique value: Multimodal — fusing 5 different data streams. Explainable — showing the expert exactly why the model predicted what it did. Expert-in-the-Loop — ensuring that AI enhances human judgment, never replaces it. We believe this system can save hundreds of lives in Assam each monsoon. Thank you — and we are happy to take any technical questions.</p>
+      </div>
+      <div class="box do">
+        <div class="box-label">🖱 Do</div>
+        <ul>
+          <li>Return to the main dashboard — the best visual to end on.</li>
+          <li>Make eye contact with each judge as you deliver the closing.</li>
+          <li>Smile confidently — you built something real!</li>
+        </ul>
+      </div>
+      <div class="box highlight">
+        <div class="box-label">⭐ Final Emphasis Points</div>
+        <ul>
+          <li>Multimodal: 5 data streams fused</li>
+          <li>Explainable: Feature attribution visible to expert</li>
+          <li>Expert-in-the-Loop: Human always in control</li>
+          <li>Real data: Not hardcoded, not synthetic</li>
+          <li>Scalable: Assam today → Pan-India tomorrow</li>
+        </ul>
+      </div>
+      <div class="box warn">
+        <div class="box-label">⚠ Common Judge Questions — Be Ready</div>
+        <p>"What is your model accuracy?" → "We focus on F1-score and Recall rather than accuracy because disaster events are rare. We use temporal holdout validation across 2023–2024 Assam events."</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end timeline -->
+
+<!-- CLOSING CARD -->
+<div class="closing">
+  <h3>🏆 You've Got This, Team Destiny!</h3>
+  <p>Practice the demo at least 3 times end-to-end. Know every number on screen. If a judge interrupts — say "Great question! Let me show you that directly" and navigate to the relevant section. The prototype is real — your confidence should be too.</p>
+</div>
+
+<div style="text-align:center;margin-top:30px;color:#475569;font-size:.8rem;font-style:italic">
+  PRALAY-SENSE &nbsp;•&nbsp; Team Destiny &nbsp;•&nbsp; Smart India Hackathon 2026 &nbsp;•&nbsp; DEMO SCRIPT v1.0
+</div>
+
+</div>
+</body>
+</html>

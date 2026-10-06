@@ -1,0 +1,8 @@
+Filename	Original location	Purpose	Model/version
+final_landslide_catboost_model.joblib	models\best_landslide_model.joblib	Final tuned CatBoost Model	CatBoost/Final
+landslide_selected_features.csv	feature_selection\landslide_selected_features.csv	Selected features CSV	CatBoost/Final
+landslide_selected_features.json	feature_selection\selected_features.json	Selected features JSON	CatBoost/Final
+feature_importance_all_models.csv	feature_selection\landslide_feature_importance.csv	Combined feature importance	CatBoost/Final
+landslide_final_training_data.csv	cleaned_data\landslide_training_verified.csv	Final cleaned dataset	CatBoost/Final
+landslide_model_comparison.csv	reports\landslide_final_model_comparison.csv	Final Model Comparison	CatBoost/Final
+landslide_test_predictions.csv	predictions\landslide_test_predictions.csv	Test Predictions	CatBoost/Final

@@ -1,0 +1,7 @@
+Original rainfall definition found: NO
+Best-supported reconstructed definition: June-September
+Evidence: Lowest MAE (0.0000 mm) and perfect correlation (1.0000)
+Correlation: 1.0000
+MAE: 0.0000 mm
+RMSE: 0.0000 mm
+Remaining uncertainty: None (Exact match)

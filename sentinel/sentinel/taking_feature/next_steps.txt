@@ -1,0 +1,10 @@
+1. Final CatBoost model location: C:\Users\abhis\Documents\Ai project\Sih\sentinel\sentinel\taking_feature\final_landslide_catboost_model.joblib
+2. Selected feature list: tri, rainfall, slope, dem, aspect, tpi, S1_Sep28_VH, VV_change, S1_Aug23_VH, S1_Aug23_VV, S1_Jul06_VV, S1_Aug11_VH, S1_Jul18_VH, S1_Jul30_VV, VH_change
+3. Required predictor rasters: 15
+4. Which rasters are available: 5
+5. Which rasters are missing: 10
+6. CRS of each raster: Recorded in raster_inventory.csv
+7. Resolution of each raster: Recorded in raster_inventory.csv
+8. Whether all rasters are aligned: No
+9. What preprocessing is still required: Resampling, clipping, and aligning missing/misaligned rasters (and engineering spatial features like VH_mean as rasters).
+10. Exact next step for generating the susceptibility GeoTIFF: Prepare/alignment of predictor rasters followed by pixel-wise CatBoost prediction to create the continuous landslide susceptibility GeoTIFF.

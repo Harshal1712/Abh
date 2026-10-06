@@ -1,0 +1,12 @@
+<PAMDataset>
+  <PAMRasterBand band="1">
+    <Description>Total rainfall June-September 2025 (mm)</Description>
+    <Metadata>
+      <MDI key="STATISTICS_MINIMUM">0</MDI>
+      <MDI key="STATISTICS_MAXIMUM">5474.5356445312</MDI>
+      <MDI key="STATISTICS_MEAN">921.073947283</MDI>
+      <MDI key="STATISTICS_STDDEV">621.72131654122</MDI>
+      <MDI key="STATISTICS_VALID_PERCENT">28.5</MDI>
+    </Metadata>
+  </PAMRasterBand>
+</PAMDataset>

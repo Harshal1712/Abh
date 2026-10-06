@@ -1,0 +1,22 @@
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+dist/
+build/
+coverage/
+.DS_Store
+
+# Large geospatial data (GitHub 100 MB file limit) - keep locally
+*.tif
+*.tiff
+*.img
+*.hdr
+*.nc
+*.dim
+*.data/
+*.SAFE/
+*.zip
+uploads/

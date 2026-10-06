@@ -1,0 +1,3 @@
+Feature,Feature type,Formula,Input rasters required,Training implementation/source
+VV_change,Engineered Sentinel-1,S1_Sep28_VV - S1_Jun12_VV,"S1_Sep28_VV, S1_Jun12_VV",pandas column-wise operations in landslide_model.py
+VH_change,Engineered Sentinel-1,S1_Sep28_VH - S1_Jun12_VH,"S1_Sep28_VH, S1_Jun12_VH",pandas column-wise operations in landslide_model.py

@@ -1,0 +1,16 @@
+Feature,Importance
+rainfall,1081
+dem,991
+aspect,748
+slope,736
+tri,732
+tpi,711
+VV_last_minus_first,254
+S1_Jul06_VV,142
+S1_Jul18_VH,120
+S1_Sep28_VH,112
+S1_Jul30_VV,93
+VH_last_minus_first,88
+S1_Jul18_VV,68
+S1_Aug11_VH,68
+VV_Aug_mean,56

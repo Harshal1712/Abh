@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Outfit', system-ui, sans-serif;
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    background: #f8fafc;
+    color: #172033;
+    font-family: var(--font-sans);
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 3px solid rgba(79, 70, 229, .28);
+    outline-offset: 2px;
+  }
+}
+
+/* Custom Scrollbar for Intelligence Panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.25);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.45);
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.07);
+}
+
+.app-shell main {
+  background-image: linear-gradient(rgba(255,255,255,.24) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.24) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+.app-shell {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(186, 230, 253, .55), transparent 26rem),
+    radial-gradient(circle at 100% 100%, rgba(167, 243, 208, .38), transparent 30rem),
+    #f8fafc;
+}
+
+.citizen-page {
+  background:
+    radial-gradient(circle at 8% 15%, rgba(186, 230, 253, .6), transparent 25rem),
+    radial-gradient(circle at 92% 85%, rgba(254, 215, 170, .42), transparent 26rem),
+    #f8fafc;
+}
+
+.citizen-glass {
+  background: rgba(255, 255, 255, .65);
+  border: 1px solid rgba(255, 255, 255, .95);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .06);
+  backdrop-filter: blur(18px);
+}
+
+/* Keep Leaflet's utility panels inside the map card, not over page content. */
+.leaflet-container .leaflet-control-zoom {
+  margin: 12px;
+  border: 1px solid rgba(148, 163, 184, .45);
+  border-radius: 10px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .14);
+  overflow: hidden;
+}
+
+.leaflet-container .leaflet-control-zoom a {
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  color: #334155;
+  background: rgba(255, 255, 255, .94);
+}
+
+.leaflet-container .leaflet-popup-content-wrapper {
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, .22);
+}
+
+.leaflet-container .risk-query-popup .leaflet-popup-content {
+  margin: 14px;
+  width: min(300px, calc(100vw - 70px)) !important;
+}
+
+.leaflet-container .event-map-popup .leaflet-popup-content {
+  margin: 12px;
+}

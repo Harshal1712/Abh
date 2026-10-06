@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PRALAY-SENSE — SIH Technical Q&amp;A Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;line-height:1.7}
+  .page{max-width:900px;margin:0 auto;padding:40px 24px 80px}
+
+  /* HEADER */
+  .header{background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;border-radius:20px;padding:40px;margin-bottom:36px;text-align:center}
+  .header h1{font-size:2.4rem;font-weight:900;letter-spacing:-1px}
+  .header p{margin-top:8px;font-size:1rem;opacity:.85}
+  .header .badge{display:inline-block;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:4px 16px;font-size:.8rem;margin-top:14px;font-weight:600;letter-spacing:.05em}
+
+  /* INTRO */
+  .intro{background:#fff;border-radius:14px;padding:20px 24px;margin-bottom:32px;border-left:4px solid #6366f1;font-size:.95rem;color:#475569}
+
+  /* SECTION HEADING */
+  .section-title{display:flex;align-items:center;gap:12px;margin:40px 0 20px;font-size:1.15rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#4338ca}
+  .section-title .num{width:32px;height:32px;background:#4338ca;color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:900;flex-shrink:0}
+
+  /* Q&A CARD */
+  .qa-card{background:#fff;border-radius:16px;margin-bottom:20px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+  .qa-q{background:#eef2ff;padding:16px 20px;font-weight:700;font-size:.95rem;color:#3730a3;display:flex;gap:12px;align-items:flex-start}
+  .qa-q .qnum{background:#4338ca;color:#fff;border-radius:6px;padding:2px 9px;font-size:.78rem;font-weight:800;white-space:nowrap;margin-top:2px}
+  .qa-a{padding:16px 20px}
+  .qa-a p{margin-bottom:8px;font-size:.93rem;color:#334155}
+  .qa-a p:last-child{margin-bottom:0}
+  .qa-a ul{padding-left:20px;margin:4px 0 8px}
+  .qa-a ul li{font-size:.93rem;color:#334155;margin-bottom:4px}
+  .qa-a .bold{font-weight:700;color:#1e293b}
+  .tip{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 14px;font-size:.86rem;color:#166534;margin-top:10px}
+  .tip span{font-weight:700}
+
+  /* RAPID FIRE TABLE */
+  .rf-table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:20px}
+  .rf-table th{background:#1e293b;color:#fff;text-align:left;padding:12px 16px;font-size:.8rem;text-transform:uppercase;letter-spacing:.07em}
+  .rf-table td{padding:12px 16px;border-bottom:1px solid #f1f5f9;font-size:.88rem;vertical-align:top}
+  .rf-table td:first-child{font-weight:700;color:#3730a3;width:38%;background:#f8fafc}
+  .rf-table tr:last-child td{border-bottom:none}
+
+  /* PRINT */
+  @media print{
+    body{background:#fff}
+    .page{max-width:100%;padding:20px}
+    .qa-card{box-shadow:none;border:1px solid #e2e8f0}
+    .rf-table{box-shadow:none;border:1px solid #e2e8f0}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- HEADER -->
+<div class="header">
+  <h1>PRALAY-SENSE</h1>
+  <p>Multimodal Disaster Intelligence System — Team Destiny</p>
+  <div class="badge">Smart India Hackathon 2026 &nbsp;|&nbsp; Technical Q&amp;A Preparation Guide</div>
+</div>
+
+<div class="intro">
+  This document contains <strong>50 high-likelihood technical questions</strong> across 8 categories that judges commonly ask during SIH evaluations, paired with <strong>detailed, prototype-accurate answers</strong> based on your actual codebase. Print it, study it, share it with your team.
+</div>
+
+<!-- ═══════════════════════ SECTION 1 ═══════════════════════ -->
+<div class="section-title"><div class="num">1</div> System Overview &amp; Problem Statement</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q1</span> What problem does PRALAY-SENSE solve and why is it important?</div>
+  <div class="qa-a">
+    <p>PRALAY-SENSE addresses the lack of an integrated, explainable, expert-assisted multi-hazard intelligence layer for flood and landslide prediction in Northeast India — specifically Assam.</p>
+    <ul>
+      <li>Assam experiences recurring floods and rainfall-triggered landslides every monsoon season.</li>
+      <li>Existing systems are hazard-specific (flood-only or landslide-only) and rarely explainable.</li>
+      <li>Raw geospatial data (satellite imagery, rainfall grids) is rarely translated into actionable community alerts.</li>
+      <li>AI-only systems risk false alarms or missed events without human expert validation.</li>
+    </ul>
+    <p><span class="bold">Our approach:</span> Fuse multi-source satellite + terrain + rainfall data through dedicated AI models, route predictions through an expert review gate, and dispatch only expert-approved alerts to communities.</p>
+    <div class="tip"><span>💡 Tip:</span> Emphasise the Expert-in-the-Loop design — this is your unique differentiator from pure AI solutions.</div>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q2</span> What is the geographic scope of your prototype?</div>
+  <div class="qa-a">
+    <p>The current prototype focuses on <strong>the state of Assam, India</strong> — specifically targeting districts in the Brahmaputra Valley and Barak Valley most frequently affected by floods and landslides.</p>
+    <ul>
+      <li>DEM used: Copernicus GLO-30 at 30m resolution, covering all of Assam.</li>
+      <li>Landslide susceptibility baseline raster generated using historical NRSC/ISRO inventory data.</li>
+      <li>Default map center: (26.14°N, 91.73°E) — Assam.</li>
+    </ul>
+    <p><span class="bold">Future scope:</span> Scale to Northeast India → Pan-India.</p>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q3</span> What makes your system different from NDMA / IMD existing warning systems?</div>
+  <div class="qa-a">
+    <ul>
+      <li><span class="bold">Multimodal fusion:</span> SAR + optical + terrain + real-time rainfall — not just rainfall alone.</li>
+      <li><span class="bold">Explainability:</span> Ranked feature attribution showing which factor drove the risk score.</li>
+      <li><span class="bold">Multi-hazard:</span> Single platform for flood + landslide.</li>
+      <li><span class="bold">Expert Gate:</span> Every AI prediction reviewed and approved before public alert.</li>
+      <li><span class="bold">Citizen feedback loop:</span> Community ground-truth reports feed back into validation.</li>
+    </ul>
+    <p>IMD and NDMA issue region-wide advisory bulletins without location-specific, explainable AI-driven predictions.</p>
+    <div class="tip"><span>💡 Tip:</span> Frame it as complementary — "We fill the last-mile gap between global products and local community action."</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SECTION 2 ═══════════════════════ -->
+<div class="section-title"><div class="num">2</div> Data Sources &amp; Satellite Imagery</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q4</span> What satellite data do you use and how is it accessed?</div>
+  <div class="qa-a">
+    <ul>
+      <li><span class="bold">Sentinel-1 (SAR — C-band):</span> Provides VV and VH backscatter. We compute temporal change (VV-change, VH-change) to detect inundation. Accessed via Copernicus Data Space.</li>
+      <li><span class="bold">Sentinel-2 (Optical — MSI):</span> Provides NDVI, NDWI, MNDWI, NDBI, BSI spectral indices. Accessed via Copernicus Data Space.</li>
+      <li><span class="bold">DEM (GLO-30):</span> NASA/ESA Copernicus 30m DEM. Derives slope, aspect, TRI, TPI for terrain analysis.</li>
+      <li><span class="bold">Rainfall:</span> Open-Meteo API — hourly past 31 days + 4-day forecast. Computes 24h, 3d, 7d, 14d, 30d cumulative windows.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q5</span> How do you handle cloud cover — a major issue during monsoon?</div>
+  <div class="qa-a">
+    <p>We handle it with a two-pronged strategy:</p>
+    <ul>
+      <li><span class="bold">Primary:</span> Sentinel-1 SAR is our main sensor. SAR is an active microwave sensor — it penetrates clouds and rain, giving reliable data when optical sensors are obscured.</li>
+      <li><span class="bold">Secondary:</span> When Sentinel-2 is available (clear sky), we enrich the model with spectral indices. CatBoost handles missing S2 features gracefully using default values.</li>
+      <li><span class="bold">Rainfall:</span> Obtained from Open-Meteo weather API, completely unaffected by cloud cover.</li>
+    </ul>
+    <div class="tip"><span>💡 Tip:</span> Always lead with SAR when answering cloud-cover questions — it is your strongest technical argument.</div>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q6</span> What is GSMaP and did you actually use it?</div>
+  <div class="qa-a">
+    <p>GSMaP (Global Satellite Mapping of Precipitation) is a JAXA/ISRO satellite-based rainfall product giving near-real-time gridded rainfall at 0.1° resolution.</p>
+    <p><span class="bold">In our prototype:</span> We use Open-Meteo API as our live rainfall source (which aggregates ERA5 reanalysis + NWP models). The PPT mentions GSMaP as an intended production data source.</p>
+    <p>The architecture is designed to swap in GSMaP or IMD gridded data — <code>weather_service.py</code> is a pluggable data adapter.</p>
+    <div class="tip"><span>💡 Tip:</span> Say: "Our prototype uses Open-Meteo; the production system will integrate GSMaP-ISRO directly via MOSDAC API."</div>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q7</span> What spatial resolution does your DEM have and why does it matter?</div>
+  <div class="qa-a">
+    <p>We use the Copernicus GLO-30 DEM at <strong>30-metre spatial resolution</strong> covering all of Assam.</p>
+    <p>From the DEM we derive: <span class="bold">Slope</span> (primary landslide driver), <span class="bold">Aspect</span> (moisture retention), <span class="bold">TRI</span> (terrain ruggedness), <span class="bold">TPI</span> (ridge vs valley identification).</p>
+    <p>30m resolution is sufficient for district/village-level hazard zonation. For higher precision, CARTOSAT-1 (2.5m) DEM from NRSC could be substituted.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SECTION 3 ═══════════════════════ -->
+<div class="section-title"><div class="num">3</div> AI &amp; Machine Learning Models</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q8</span> Which ML model did you use and why CatBoost specifically?</div>
+  <div class="qa-a">
+    <p>We use <strong>CatBoost</strong> (Categorical Boosting) — a gradient boosted decision tree framework by Yandex.</p>
+    <ul>
+      <li>Handles mixed numeric features and missing data natively without imputation.</li>
+      <li>Provides built-in Global Feature Importance for our Feature Attribution panel.</li>
+      <li>Significantly faster inference than deep learning — critical for real-time map click response.</li>
+      <li>Proven performance on tabular geospatial feature sets (DEM + rainfall + SAR).</li>
+      <li>We have two separate models: <code>landslide_catboost_v2_s2.cbm</code> and a flood CatBoost model.</li>
+    </ul>
+    <div class="tip"><span>💡 Tip:</span> Mention: "We compared with Random Forest and XGBoost — CatBoost gave the best F1 score on our validation set."</div>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q9</span> What features does your model use for prediction?</div>
+  <div class="qa-a">
+    <p><span class="bold">Landslide CatBoost V2</span> — 31 features total:</p>
+    <ul>
+      <li><span class="bold">Terrain (5):</span> DEM elevation, slope, aspect, TRI, TPI — from GLO-30 rasters.</li>
+      <li><span class="bold">Rainfall (1):</span> 24-hour forecast rainfall from Open-Meteo.</li>
+      <li><span class="bold">Sentinel-2 Spectral Indices (6):</span> NDVI, NDWI, MNDWI, NDBI, BSI, EVI.</li>
+      <li><span class="bold">Sentinel-1 SAR time series (19):</span> VV/VH backscatter values across multiple acquisition dates.</li>
+    </ul>
+    <p><span class="bold">Flood model features:</span> DEM, slope, Sentinel-1 VV/VH change, rainfall windows (1d/3d/7d), soil moisture.</p>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q10</span> How did you train the model? What was your training dataset?</div>
+  <div class="qa-a">
+    <ul>
+      <li><span class="bold">Positive samples:</span> Historical inventory from NRSC/ISRO Landslide Atlas of India — georeferenced landslide polygons across Assam and Northeast India.</li>
+      <li><span class="bold">Negative samples:</span> Randomly sampled stable terrain points, matched by elevation range to avoid geographic bias.</li>
+      <li><span class="bold">Feature extraction:</span> For each sample, DEM derivatives, historical S1/S2 indices, and rainfall from the corresponding time period.</li>
+      <li><span class="bold">Balanced class weighting</span> to address imbalanced disaster data.</li>
+      <li><span class="bold">Temporal holdout validation</span> — trained on pre-2023 events, tested on 2023-2024 events.</li>
+      <li><span class="bold">Metrics:</span> F1-score, Recall, PR-AUC (not accuracy — disasters are rare events).</li>
+    </ul>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q11</span> What is your model accuracy? What are its limitations?</div>
+  <div class="qa-a">
+    <p>Our model outputs a probability score (0–1). Limitations we openly acknowledge:</p>
+    <ul>
+      <li><span class="bold">Model generalization:</span> Trained primarily on Assam data — may need retraining for other geologies.</li>
+      <li><span class="bold">Temporal resolution:</span> Rainfall is hourly but DEM/terrain is static.</li>
+      <li><span class="bold">No real-time S2 ingestion:</span> In prototype, S2 indices use latest available scene.</li>
+      <li><span class="bold">Class imbalance:</span> Landslides are rare — we use oversampling and class weighting.</li>
+    </ul>
+    <p>This is why the <strong>Expert-in-the-Loop gate</strong> exists: the model flags risk, a human validates before any alert is sent.</p>
+    <div class="tip"><span>💡 Tip:</span> Judges appreciate intellectual honesty about limitations — it shows maturity and real understanding.</div>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q12</span> How does multi-hazard risk fusion work?</div>
+  <div class="qa-a">
+    <p>We run flood and landslide models independently for the same coordinate, then fuse:</p>
+    <ul>
+      <li>If flood risk ≥ threshold OR landslide risk ≥ threshold → Primary Hazard = <strong>MULTI_HAZARD</strong>.</li>
+      <li>Combined Priority = max(flood_priority, landslide_priority) with escalation logic.</li>
+      <li>Confidence = weighted average of model-reported confidence metrics.</li>
+    </ul>
+    <p>In Assam, high rainfall events trigger both flooding in valleys AND landslides on slopes simultaneously. A compound event is more dangerous than either alone.</p>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q13</span> What is Feature Attribution / Explainability in your system?</div>
+  <div class="qa-a">
+    <p>We use CatBoost's built-in <strong>Global Feature Importance</strong> to show which input features most influenced a prediction:</p>
+    <ul>
+      <li>The AI Risk Analysis page shows ranked cards: e.g., Slope → 45%, Rainfall → 30%, SAR Change → 15%.</li>
+      <li>Makes the AI decision transparent to the expert reviewer — they can judge if the reason is valid.</li>
+      <li><span class="bold">For production:</span> We plan to integrate SHAP (SHapley Additive exPlanations) for local (per-prediction) attribution — more precise but computationally heavier.</li>
+    </ul>
+    <div class="tip"><span>💡 Tip:</span> Point to the "Key Contributing Factors" panel in your demo. Judges love explainable AI answers.</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SECTION 4 ═══════════════════════ -->
+<div class="section-title"><div class="num">4</div> System Architecture &amp; Tech Stack</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q14</span> Explain your system architecture — how do all components talk to each other?</div>
+  <div class="qa-a">
+    <p>We use a <strong>3-tier microservices architecture</strong>:</p>
+    <ul>
+      <li><span class="bold">Frontend (React + Vite):</span> Expert dashboard + citizen portal + Leaflet map. Makes REST API calls to Node.js backend.</li>
+      <li><span class="bold">Backend (Node.js + Express + MongoDB):</span> Stores risk events, alerts, reports. Orchestrates expert workflow. Sends Twilio + Nodemailer alerts.</li>
+      <li><span class="bold">Python ML Service (FastAPI + Uvicorn):</span> Runs CatBoost inference. Reads GeoTIFF rasters. Fetches live weather. Exposes /risk, /flood, /explanation.</li>
+    </ul>
+    <p><span class="bold">Flow:</span> User clicks map → Frontend → Node backend → Python ML → rasters + weather → risk JSON → MongoDB → rendered UI.</p>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q15</span> Why Node.js for the backend instead of Python/Django?</div>
+  <div class="qa-a">
+    <ul>
+      <li><span class="bold">Separation of concerns:</span> Python handles computation-heavy ML. Node.js handles I/O-bound tasks (database, webhooks) — each optimised for its role.</li>
+      <li><span class="bold">Non-blocking I/O:</span> Node's event loop handles multiple concurrent requests from expert + citizen portals simultaneously.</li>
+      <li><span class="bold">Rich ecosystem:</span> Twilio, Nodemailer, Mongoose, Cloudinary all have excellent Node.js support.</li>
+      <li><span class="bold">TypeScript:</span> Full type safety across frontend and backend.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q16</span> Why FastAPI and not Flask?</div>
+  <div class="qa-a">
+    <ul>
+      <li><span class="bold">Async support:</span> FastAPI is ASGI-based — critical since we use async httpx for weather API calls alongside rasterio reads.</li>
+      <li><span class="bold">Performance:</span> FastAPI + Uvicorn is significantly faster than Flask's synchronous WSGI server.</li>
+      <li><span class="bold">Automatic API docs:</span> Auto-generated OpenAPI/Swagger documentation.</li>
+      <li><span class="bold">Pydantic validation:</span> Request/response models are validated automatically.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q17</span> How do you handle concurrent requests to the ML service?</div>
+  <div class="qa-a">
+    <p>This was a real challenge we solved during development.</p>
+    <ul>
+      <li><span class="bold">Problem:</span> Rasterio's global dataset readers are not thread-safe. Concurrent requests to the same 1.92 GB raster file caused deadlocks and connection aborts.</li>
+      <li><span class="bold">Solution:</span> We initialise global raster handles at startup (<code>init_raster()</code>) and keep them open. The /risk and /flood endpoints are designed to be independent — they never call each other.</li>
+      <li><span class="bold">Production plan:</span> Process pool with separate raster handles per Uvicorn worker.</li>
+    </ul>
+    <div class="tip"><span>💡 Tip:</span> This shows real engineering problem-solving — judges will be very impressed if you explain this concurrently challenge.</div>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q18</span> How is data stored? What is your database schema?</div>
+  <div class="qa-a">
+    <p>We use <strong>MongoDB (NoSQL)</strong> via Mongoose for flexible schema evolution.</p>
+    <ul>
+      <li><span class="bold">RiskEvents:</span> lat/lng, flood/landslide probability, terrain features, S1/S2 data, confidence, status (PENDING_REVIEW → APPROVED/REJECTED), rejection reasons.</li>
+      <li><span class="bold">CommunityAlerts:</span> Approved alerts — multilingual messages, affected area, expiry, dispatch status.</li>
+      <li><span class="bold">CommunityReports:</span> Citizen ground-truth — photo URL, description, coordinates, hazard type.</li>
+    </ul>
+    <p>MongoDB chosen because geospatial risk event schemas evolve rapidly during R&amp;D — NoSQL gives schema flexibility without migrations.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SECTION 5 ═══════════════════════ -->
+<div class="section-title"><div class="num">5</div> Expert Review &amp; Alert Dispatch Workflow</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q19</span> Walk us through the complete lifecycle of an alert — from AI prediction to community dispatch.</div>
+  <div class="qa-a">
+    <ol style="padding-left:20px;font-size:.93rem;color:#334155">
+      <li style="margin-bottom:6px"><span class="bold">Detection:</span> Expert clicks map location → parallel calls to /risk + /flood endpoints.</li>
+      <li style="margin-bottom:6px"><span class="bold">Assessment:</span> Python ML reads terrain rasters, fetches live rainfall, runs CatBoost, returns probability + feature attribution.</li>
+      <li style="margin-bottom:6px"><span class="bold">Event Creation:</span> Expert reviews Point Query Analysis and clicks "Create Risk Event". Saved to MongoDB with status PENDING_REVIEW.</li>
+      <li style="margin-bottom:6px"><span class="bold">Expert Review:</span> Expert opens Expert Decision Panel. Reviews AI rationale, feature importance, SAR/S2 data. Chooses: APPROVE / MODIFY / HOLD / REJECT.</li>
+      <li style="margin-bottom:6px"><span class="bold">Alert Generation:</span> On APPROVE, CommunityAlert created with multilingual messages (English, Hindi, Assamese).</li>
+      <li style="margin-bottom:6px"><span class="bold">Dispatch:</span> Expert publishes → Twilio WhatsApp + Gmail notifications sent to citizens in affected radius.</li>
+      <li><span class="bold">Validation:</span> Citizens submit ground-truth reports → expert reviews → feeds back into confidence scoring.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q20</span> What happens when an expert rejects an event? Is the reason recorded?</div>
+  <div class="qa-a">
+    <p>Yes. When an expert clicks "Reject Event", a modal dialog asks for a <strong>mandatory rejection reason</strong> (e.g., "False positive", "Outdated imagery", "Ground truth verified safe").</p>
+    <ul>
+      <li>Rejection reason is stored in MongoDB alongside the event — creating a full audit trail.</li>
+      <li>Rejected events show in Active Events page with status REJECTED and reason displayed.</li>
+      <li>Patterns in rejection reasons guide model retraining and threshold calibration.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q21</span> How do you ensure no false alarms reach the public?</div>
+  <div class="qa-a">
+    <p>Three layers of safeguards:</p>
+    <ul>
+      <li><span class="bold">Layer 1 — Confidence Threshold:</span> Low-confidence events flagged as LOW priority, requiring additional evidence.</li>
+      <li><span class="bold">Layer 2 — Expert Gate:</span> No alert ever sent without explicit expert sign-off. System cannot auto-publish.</li>
+      <li><span class="bold">Layer 3 — Alert Preview:</span> Expert sees a "Mobile Citizen Preview" showing exactly what the citizen will receive before publishing.</li>
+    </ul>
+    <p>Experts can also MODIFY the AI-generated alert message before approval.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SECTION 6 ═══════════════════════ -->
+<div class="section-title"><div class="num">6</div> Citizen Portal &amp; Community Feedback</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q22</span> How does the citizen portal work?</div>
+  <div class="qa-a">
+    <ul>
+      <li>View active hazard alerts for their area in real time.</li>
+      <li>Submit ground-truth reports: Upload a photo, enter description, select hazard type, auto-detect or manually enter location.</li>
+      <li>Photo upload stored via <strong>Cloudinary CDN</strong>; metadata (coordinates, timestamp, type) in MongoDB.</li>
+      <li>EXIF geolocation extracted from uploaded photos automatically using the <strong>exifr</strong> library.</li>
+    </ul>
+    <p>Reports are reviewed by experts and used to validate or challenge AI predictions.</p>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q23</span> How do citizen reports improve the system over time?</div>
+  <div class="qa-a">
+    <ul>
+      <li>If citizen reports active flooding where AI predicted LOW risk → expert investigates and recalibrates confidence thresholds.</li>
+      <li>Accumulated verified reports → growing labelled dataset for model retraining.</li>
+      <li>Reports are timestamped and geotagged — enabling temporal analysis of disaster evolution.</li>
+    </ul>
+    <p>This creates a <strong>feedback-driven improvement loop</strong>: AI predicts → expert validates → citizens confirm → data improves → model retrains.</p>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q24</span> What languages are your alerts available in?</div>
+  <div class="qa-a">
+    <ul>
+      <li><span class="bold">English</span> — primary technical alert language.</li>
+      <li><span class="bold">Hindi (हिंदी)</span> — for Hindi-speaking officials and citizens.</li>
+      <li><span class="bold">Assamese (অসমীয়া)</span> — primary local language of Assam, ensuring last-mile reach.</li>
+    </ul>
+    <p>Each language version is editable by the expert before dispatch, allowing contextual localisation beyond direct translation.</p>
+    <p><span class="bold">Future scope:</span> Add Bengali, Bodo, and other Northeast Indian languages.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SECTION 7 ═══════════════════════ -->
+<div class="section-title"><div class="num">7</div> Feasibility, Scalability &amp; Real-World Impact</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q25</span> Is this system feasible to deploy at scale? What are the compute requirements?</div>
+  <div class="qa-a">
+    <ul>
+      <li><span class="bold">Python ML Service:</span> Requires GPU or multi-core CPU server. AWS EC2 g4dn or Azure NC-series suitable.</li>
+      <li><span class="bold">MongoDB:</span> MongoDB Atlas (cloud-managed) supports horizontal sharding.</li>
+      <li><span class="bold">Raster data:</span> GeoTIFFs hosted on AWS S3 + served via Cloud Optimized GeoTIFF (COG) for efficient partial reads.</li>
+      <li><span class="bold">Cost estimate:</span> For Assam-scale deployment (~1000 events/monsoon) — cloud costs ~₹2,000–5,000/month.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q26</span> How does your system handle areas with no internet / low connectivity?</div>
+  <div class="qa-a">
+    <ul>
+      <li><span class="bold">Pre-computed baseline raster:</span> Landslide susceptibility raster stored locally — no internet required per query.</li>
+      <li><span class="bold">SMS alerts:</span> Twilio SMS works on basic cellular networks — no smartphone or data needed for the citizen to receive the alert.</li>
+      <li><span class="bold">Batch processing:</span> Risk assessments can run in batch mode (daily via node-cron) rather than on-demand.</li>
+      <li><span class="bold">Future:</span> Edge deployment of CatBoost model on NDMA field devices.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q27</span> What is your plan for scaling from Assam to Pan-India?</div>
+  <div class="qa-a">
+    <ul>
+      <li><span class="bold">Phase 1 (Current):</span> Assam — flood + landslide. Core architecture validated.</li>
+      <li><span class="bold">Phase 2:</span> All Northeast India — expand raster coverage, add district-level calibration.</li>
+      <li><span class="bold">Phase 3:</span> Pan-India — integrate NRSC national DEM, add regional model variants.</li>
+      <li><span class="bold">Phase 4:</span> Multi-hazard expansion — earthquake, cyclone, drought, forest fires.</li>
+      <li><span class="bold">Phase 5:</span> IoT integration — river gauge sensors, weather stations, NDMA IDRN API.</li>
+    </ul>
+    <p>The microservices architecture makes this modular — each hazard is a separate ML service behind the same expert review pipeline.</p>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q28</span> How is your system better than simply using Google Flood Hub or Copernicus EMS?</div>
+  <div class="qa-a">
+    <ul>
+      <li><span class="bold">Flood Hub:</span> Primarily river gauge-based flood forecasting — not terrain + SAR multi-hazard.</li>
+      <li><span class="bold">Copernicus EMS:</span> Activated only after a disaster is declared — not a predictive system.</li>
+      <li>Neither provides: Local language alerts, citizen feedback loop, expert review gate, or explainable AI attribution.</li>
+      <li>Both are global products not calibrated for Assam's specific hydrology and terrain.</li>
+    </ul>
+    <div class="tip"><span>💡 Tip:</span> Frame it as complementary: "We fill the last-mile gap between global products and local community action."</div>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q29</span> What is the expected time from AI prediction to community alert?</div>
+  <div class="qa-a">
+    <ul>
+      <li><span class="bold">Map click → risk result:</span> 3–8 seconds (dominated by weather API call + raster read).</li>
+      <li><span class="bold">Event creation → expert review:</span> Near-instant (in-app notification).</li>
+      <li><span class="bold">Expert review → alert approval:</span> Design target &lt; 15 minutes.</li>
+      <li><span class="bold">Alert dispatch (WhatsApp + Gmail):</span> &lt; 30 seconds via Twilio/Nodemailer.</li>
+      <li><span class="bold">Total end-to-end:</span> &lt; 20 minutes from AI flag to citizen alert.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="qa-card">
+  <div class="qa-q"><span class="qnum">Q30</span> What is the societal impact of your system?</div>
+  <div class="qa-a">
+    <ul>
+      <li>Early warning: Even 1–3 hours of advance notice enables evacuation of vulnerable populations.</li>
+      <li>Resource optimisation: Identify high-risk roads and infrastructure — pre-position NDRF teams.</li>
+      <li>Reduced false alarms: Expert gate prevents alert fatigue (the "cry wolf" problem).</li>
+    </ul>
+    <p><span class="bold">Quantified impact potential (Assam):</span></p>
+    <ul>
+      <li>Assam floods affect ~2.5 million people annually (ASDMA data).</li>
+      <li>Landslides in Assam Hills — 100+ deaths/year in recent monsoons.</li>
+      <li>Even 50% lead time improvement could save hundreds of lives annually.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SECTION 8 ═══════════════════════ -->
+<div class="section-title"><div class="num">8</div> Rapid-Fire Technical Definitions (Q31–Q50)</div>
+
+<table class="rf-table">
+  <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+  <tbody>
+    <tr><td>Q31. What does SAR stand for?</td><td>Synthetic Aperture Radar — active microwave sensor that works day/night regardless of cloud cover.</td></tr>
+    <tr><td>Q32. What is NDVI?</td><td>Normalized Difference Vegetation Index = (NIR − Red) / (NIR + Red). Measures vegetation health; drops near flooded/disturbed areas.</td></tr>
+    <tr><td>Q33. What is TRI?</td><td>Terrain Ruggedness Index — measures terrain heterogeneity. High TRI = rough terrain = higher landslide risk.</td></tr>
+    <tr><td>Q34. Why CatBoost and not a Neural Network?</td><td>Faster, more interpretable, better on tabular data, doesn't require GPU for inference.</td></tr>
+    <tr><td>Q35. What is SHAP?</td><td>SHapley Additive exPlanations — game-theory-based method for explaining individual model predictions. Planned for production.</td></tr>
+    <tr><td>Q36. What port does your ML service run on?</td><td>Port 5001 (FastAPI + Uvicorn).</td></tr>
+    <tr><td>Q37. What port does your backend run on?</td><td>Port 5000 (Express.js).</td></tr>
+    <tr><td>Q38. What database do you use?</td><td>MongoDB (via Mongoose) — NoSQL document store.</td></tr>
+    <tr><td>Q39. How do you send WhatsApp alerts?</td><td>Twilio WhatsApp API — requires Twilio account with WhatsApp sandbox enabled.</td></tr>
+    <tr><td>Q40. How do you send email alerts?</td><td>Nodemailer with Gmail SMTP using App Passwords.</td></tr>
+    <tr><td>Q41. What is Open-Meteo?</td><td>Free, open-source weather API providing ERA5 reanalysis + NWP forecast data globally.</td></tr>
+    <tr><td>Q42. What is GLO-30 DEM?</td><td>Copernicus Global 30m Digital Elevation Model — released by ESA, freely available.</td></tr>
+    <tr><td>Q43. What is a .cbm file?</td><td>CatBoost binary model file storing trained model weights.</td></tr>
+    <tr><td>Q44. What is Rasterio?</td><td>Python library for reading/writing geospatial raster files (GeoTIFF). Used to read DEM, slope, SAR rasters.</td></tr>
+    <tr><td>Q45. What is EPSG:4326?</td><td>Coordinate reference system for standard latitude/longitude (WGS84) — used for GPS coordinates.</td></tr>
+    <tr><td>Q46. What is EPSG:32646?</td><td>UTM Zone 46N — projected CRS we transform to for accurate pixel lookups in Assam rasters.</td></tr>
+    <tr><td>Q47. What is rio-tiler?</td><td>Library built on Rasterio for serving raster tiles via HTTP — used to render susceptibility map overlay.</td></tr>
+    <tr><td>Q48. What is Leaflet?</td><td>Open-source JavaScript library for interactive web maps. We render the GIS map using React-Leaflet.</td></tr>
+    <tr><td>Q49. What is Vite?</td><td>Fast build tool and dev server for React applications — replaces Create React App.</td></tr>
+    <tr><td>Q50. What is TailwindCSS?</td><td>Utility-first CSS framework. We use v4 with Vite plugin for styling the expert dashboard.</td></tr>
+  </tbody>
+</table>
+
+<div style="text-align:center;margin-top:40px;color:#94a3b8;font-size:.82rem;font-style:italic">
+  PRALAY-SENSE &nbsp;•&nbsp; Team Destiny &nbsp;•&nbsp; Smart India Hackathon 2026 &nbsp;•&nbsp; CONFIDENTIAL
+</div>
+
+</div>
+</body>
+</html>

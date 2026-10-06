@@ -1,0 +1,388 @@
+
+================================================================================
+         PRALAY-SENSE — SIH 2026 PROTOTYPE DEMO SCRIPT
+         Multimodal Disaster Intelligence System | Team Destiny
+         Total Time: ~8-10 Minutes | 6 Phases | 13 Steps
+================================================================================
+
+COLOR KEY:
+  [SAY]       = Exact words to speak
+  [DO]        = What to click / show on screen
+  [HIGHLIGHT] = Key technical points to emphasise to judges
+  [WARN]      = Watch out / tricky question response
+
+TIME BUDGET:
+  Phase 1 — Opening & Dashboard         ~1:00 min
+  Phase 2 — Live AI Risk Analysis       ~1:45 min
+  Phase 3 — Expert Review & XAI         ~2:00 min
+  Phase 4 — Alert Dispatch              ~1:30 min
+  Phase 5 — Citizen Portal              ~0:45 min
+  Phase 6 — Closing                     ~1:00 min
+  TOTAL                                 ~8-10 min
+
+================================================================================
+PHASE 1 — OPENING HOOK & PROBLEM STATEMENT
+================================================================================
+
+STEP 1 | Opening Statement                                       [0:00 – 0:45]
+------------------------------------------------------------------------
+
+[SAY]
+  "Every monsoon, Assam faces two simultaneous threats — catastrophic floods
+   in its valleys and deadly landslides in its hills. In 2024 alone, over
+   2.5 million people were displaced. Existing systems give region-wide
+   warnings. We asked: what if an AI system could pinpoint exactly which
+   village is at risk — right now — and get an expert-verified alert to
+   those citizens in under 20 minutes? That is PRALAY-SENSE."
+
+[DO]
+  - Stand confidently, speak slowly — let the problem land.
+  - Have the Expert Dashboard open and visible on screen.
+  - Do NOT click anything yet — let judges absorb the dashboard visually.
+
+[HIGHLIGHT]
+  - Multi-hazard (flood + landslide simultaneously)
+  - Expert-verified — AI assists, human decides
+  - 20 minutes end-to-end from detection to citizen alert
+
+
+------------------------------------------------------------------------
+STEP 2 | Dashboard Overview                                      [0:45 – 1:15]
+------------------------------------------------------------------------
+
+[SAY]
+  "This is the Expert Dashboard — the command centre for a disaster
+   management analyst. You can see live metric cards showing active risk
+   events, pending reviews, alerts dispatched, and incoming citizen reports.
+   The interactive map shows Assam with real terrain data — DEM-derived
+   susceptibility overlaid using our trained AI model. Every orange or red
+   zone was computed from real Sentinel satellite data and historical
+   landslide inventory from NRSC/ISRO."
+
+[DO]
+  - Point to the 4 metric cards at the top (Events, Reviews, Alerts, Reports).
+  - Gesture broadly at the GIS map — hover over it slightly.
+  - Point to the Priority Events list on the right panel.
+
+[HIGHLIGHT]
+  - Real terrain data — not synthetic demo data
+  - Assam map centered at (26.14 N, 91.73 E)
+  - Three live services: React frontend + Node.js backend + Python ML
+
+
+================================================================================
+PHASE 2 — LIVE AI RISK ANALYSIS (MAP CLICK)
+================================================================================
+
+------------------------------------------------------------------------
+STEP 3 | Perform a Live Map Click                                [1:15 – 2:00]
+------------------------------------------------------------------------
+
+[SAY]
+  "Watch what happens when I click anywhere on the map — let me click near
+   Kamrup Metropolitan district, which borders Guwahati. The moment I click,
+   our system does three things simultaneously: it reads the terrain raster
+   for that exact coordinate, fetches live rainfall data from the Open-Meteo
+   API, and runs inference through two separate CatBoost machine learning
+   models — one for flood, one for landslide."
+
+[DO]
+  - Click on the map near Kamrup / Guwahati (approx 26.1 N, 91.7 E).
+  - Let the Point Query Analysis panel slide in from the right.
+  - Point to loading: "See — it's fetching live data right now."
+  - Wait for results (3–8 seconds).
+
+[HIGHLIGHT]
+  - This is LIVE — real API call to the Python ML service
+  - Weather fetched from Open-Meteo in real-time
+  - Terrain read from actual 30m GLO-30 DEM raster file
+
+
+------------------------------------------------------------------------
+STEP 4 | Walk Through the Point Query Analysis Panel             [2:00 – 2:45]
+------------------------------------------------------------------------
+
+[SAY]
+  "The results are in. On the left — flood probability from our Flood
+   CatBoost model. On the right — landslide risk from our Landslide
+   CatBoost V2 model, which uses 31 geospatial features including
+   Sentinel-1 SAR change, DEM slope, aspect, terrain ruggedness, and
+   real-time rainfall. Below, you see actual terrain values: slope in
+   degrees, DEM elevation, aspect direction, TRI, TPI — all read from our
+   processed Assam rasters. The rainfall data shows 24-hour, 3-day, and
+   7-day cumulative values fetched live just now."
+
+[DO]
+  - Point to the Flood % and Landslide % bars.
+  - Scroll the side panel — point to terrain values (slope, DEM, aspect).
+  - Point to the rainfall section (24h, 3d, 7d values).
+  - Point to the Sentinel-1 SAR change value if shown.
+  - Point to the soil moisture value.
+
+[HIGHLIGHT]
+  - 31 real features — not hardcoded values
+  - Sentinel-1 VV/VH backscatter (penetrates clouds — active microwave)
+  - Soil moisture from Open-Meteo at 0–7 cm depth
+  - Two INDEPENDENT models — flood and landslide run separately
+
+
+------------------------------------------------------------------------
+STEP 5 | Create a Risk Event                                     [2:45 – 3:15]
+------------------------------------------------------------------------
+
+[SAY]
+  "Based on this analysis, the expert decides this location warrants
+   monitoring. One click on 'Create Risk Event' — and this assessment is
+   instantly saved to our MongoDB database, stamped with satellite data,
+   AI probabilities, and terrain readings. The panel closes and the new
+   event appears in the Priority Events list, flagged as PENDING REVIEW."
+
+[DO]
+  - Click "Create Risk Event" button at the bottom of the panel.
+  - Panel closes automatically.
+  - Point to the new event appearing in the right-side Priority list.
+  - Point to its PENDING REVIEW badge.
+
+
+================================================================================
+PHASE 3 — EXPERT REVIEW & EXPLAINABLE AI
+================================================================================
+
+------------------------------------------------------------------------
+STEP 6 | Open the Expert Review Panel                           [3:15 – 4:00]
+------------------------------------------------------------------------
+
+[SAY]
+  "Now we enter the Expert Review Panel — the most critical part of our
+   architecture. This is where a trained domain expert — a geologist,
+   hydrology analyst, or NDMA officer — reviews the AI's reasoning BEFORE
+   any alert reaches the public. This Expert-in-the-Loop design is what
+   separates PRALAY-SENSE from a black-box AI system."
+
+[DO]
+  - Click "Expert Review" in the navigation sidebar.
+  - The current pending event loads automatically with all AI data.
+  - Gesture broadly at the full panel — it's rich, let it breathe.
+
+
+------------------------------------------------------------------------
+STEP 7 | Show AI Risk Analysis & Feature Attribution            [4:00 – 5:00]
+------------------------------------------------------------------------
+
+[SAY]
+  "Navigate to the AI Risk Analysis page. Here the expert sees not just the
+   risk score — but WHY the model made this prediction. The Key Contributing
+   Factors section shows ranked feature attribution — in this case, terrain
+   slope is the dominant factor at over 40%, followed by recent rainfall and
+   SAR change. This is explainable AI — the expert can look at the evidence,
+   agree or disagree, and make an informed decision. A pure black-box AI
+   score without this context is dangerous for emergency management."
+
+[DO]
+  - Click "AI Risk Analysis" in the sidebar.
+  - Point to the big risk score percentage at the top.
+  - Scroll to the "Key Contributing Factors" section.
+  - Point to each ranked factor card — #1, #2, #3.
+  - Point to the "Value" and "Contribution %" for each factor.
+
+[HIGHLIGHT]
+  - REAL model feature importance — computed via CatBoost's get_feature_importance()
+  - Called live in risk_engine.py during inference
+  - Each % derived from the actual 31-feature model run
+  - Expert can cross-check: "Is slope really steep? See DEM value above."
+
+
+------------------------------------------------------------------------
+STEP 8 | Expert Decision — Approve the Alert                    [5:00 – 5:45]
+------------------------------------------------------------------------
+
+[SAY]
+  "The expert has reviewed the evidence. The slope is steep, rainfall is
+   elevated, and the SAR signal confirms surface moisture change. The expert
+   clicks 'APPROVE ALERT'. A confirmation modal appears — showing a final
+   preview: affected area, hazard type, severity, and the alert message that
+   will go out to citizens. This is the last gate before public dispatch."
+
+[DO]
+  - Go back to the Expert Review page.
+  - Click the green "APPROVE ALERT" button.
+  - The Confirmation Modal opens — point to each field (area, hazard, severity).
+  - Click "Confirm & Proceed to Alert".
+
+[HIGHLIGHT]
+  - No alert EVER auto-sends — always requires explicit human confirmation
+  - Modal shows EXACTLY what citizens will receive (mobile preview)
+  - Audit trail: every approval is timestamped and stored in MongoDB
+
+
+================================================================================
+PHASE 4 — ALERT MANAGEMENT & MULTILINGUAL DISPATCH
+================================================================================
+
+------------------------------------------------------------------------
+STEP 9 | Alert Management — Multilingual Editor                 [5:45 – 6:30]
+------------------------------------------------------------------------
+
+[SAY]
+  "The approved event now moves to Alert Management. Here, the expert can
+   review and edit the alert message in three languages — English, Hindi,
+   and Assamese — to ensure last-mile reach. A fisherman in rural Assam
+   receiving a WhatsApp message in Assamese understands it far better than
+   an English technical bulletin. The expert can also adjust alert severity
+   and affected area before publishing."
+
+[DO]
+  - Click "Alert Management" in the sidebar.
+  - Select the newly approved alert.
+  - Show the language toggle — click "Hindi" then "Assamese (অসমীয়া)".
+  - Point to the editable text area for each language.
+  - Click "Preview Alert" — show the Mobile Citizen Preview modal.
+
+[HIGHLIGHT]
+  - English + Hindi + Assamese (অসমীয়া) — real local language support
+  - iOS-style Mobile Preview shows exactly what citizen sees on their phone
+  - Expert can edit message content before dispatch
+
+
+------------------------------------------------------------------------
+STEP 10 | Publish Alert — WhatsApp + Gmail Dispatch             [6:30 – 7:00]
+------------------------------------------------------------------------
+
+[SAY]
+  "The expert is satisfied. Click 'Publish Alert'. Our backend immediately
+   triggers two parallel dispatch channels — Twilio for WhatsApp
+   notifications and Nodemailer for Gmail alerts — reaching all registered
+   citizens within the affected radius. The System Dispatch confirmation
+   shows how many WhatsApp messages and emails were sent."
+
+[DO]
+  - Click the "Publish Alert" button.
+  - The System Dispatch modal appears — point to WhatsApp and Gmail counts.
+  - Click "Acknowledge Dispatch" to close.
+
+[HIGHLIGHT]
+  - Twilio SDK + Nodemailer — REAL dispatch infrastructure (not simulated)
+  - Parallel send: WhatsApp + Gmail simultaneously
+  - Full audit log: who approved, when dispatched, how many reached
+
+
+================================================================================
+PHASE 5 — CITIZEN PORTAL & GROUND TRUTH
+================================================================================
+
+------------------------------------------------------------------------
+STEP 11 | Citizen Portal — Alert View & Report Submission       [7:00 – 7:45]
+------------------------------------------------------------------------
+
+[SAY]
+  "Now let's switch perspective — from expert to citizen. Our system includes
+   a Citizen Portal where a resident can see active alerts for their location.
+   More importantly — they can submit a ground-truth report. If they see
+   flooding or a landslide, they take a photo, the system automatically
+   extracts GPS coordinates from the image's EXIF data, and the report is
+   submitted directly to the expert dashboard for validation. This creates a
+   feedback loop: satellite AI predicts, expert validates, citizens confirm."
+
+[DO]
+  - Navigate to the Citizen Portal.
+  - Show the active alerts section.
+  - Click "Submit Report" — show the photo upload form.
+  - Point to the location auto-detect feature (EXIF extraction).
+
+[HIGHLIGHT]
+  - EXIF geolocation extraction — no manual coordinate entry needed
+  - Photos stored on Cloudinary CDN — scalable, reliable
+  - Citizen reports close the validation feedback loop
+
+
+================================================================================
+PHASE 6 — CLOSING
+================================================================================
+
+------------------------------------------------------------------------
+STEP 12 | Active Events Table — Full System View                [7:45 – 8:15]
+------------------------------------------------------------------------
+
+[SAY]
+  "The Active Events page gives operations a full tabular overview — every
+   risk event with location, flood risk %, landslide risk %, priority,
+   confidence, and current status. Analysts can filter by severity and open
+   any event for deep analysis. This is the operational layer that ASDMA
+   would use during an active monsoon season."
+
+[DO]
+  - Navigate to "Active Events" in the sidebar.
+  - Point to columns: Flood Risk %, Landslide Risk %, Priority, Confidence, Status.
+  - Click the eye icon on one event to open the detail view.
+  - Return to the main Dashboard as your final view.
+
+
+------------------------------------------------------------------------
+STEP 13 | Closing Statement                                     [8:15 – 9:00]
+------------------------------------------------------------------------
+
+[SAY]
+  "What you just saw was a complete end-to-end disaster intelligence
+   workflow — from a satellite pixel to a citizen WhatsApp alert — in under
+   10 minutes.
+
+   PRALAY-SENSE is not a demo with hardcoded values. Every number you saw
+   was computed live from real Assam terrain data, real Sentinel satellite
+   imagery, and a real weather API.
+
+   Our unique value:
+   - MULTIMODAL:       Fusing 5 different data streams
+   - EXPLAINABLE:      Showing the expert WHY the model predicted what it did
+   - EXPERT-IN-LOOP:   AI enhances human judgment, never replaces it
+   - REAL DATA:        Not hardcoded, not synthetic
+   - SCALABLE:         Assam today — Pan-India tomorrow
+
+   We believe this system can save hundreds of lives in Assam each monsoon.
+   Thank you — and we are happy to take any technical questions."
+
+[DO]
+  - Return to the main Dashboard — best visual to end on.
+  - Make eye contact with each judge as you deliver the closing.
+  - Smile confidently — you built something real!
+
+
+================================================================================
+BONUS: QUICK RESPONSES FOR COMMON JUDGE INTERRUPTIONS
+================================================================================
+
+Q: "What is your model accuracy?"
+A: "We focus on F1-score and Recall rather than accuracy because disaster
+   events are rare — accuracy would be misleading. We use temporal holdout
+   validation: trained on pre-2023 events, tested on 2023-2024 Assam events."
+
+Q: "Is this data real or hardcoded?"
+A: "Everything is live. The terrain values come from a 1.92 GB Assam raster
+   file read in real-time. The rainfall was fetched from Open-Meteo just
+   now. The model is a trained .cbm CatBoost file."
+
+Q: "What if the expert approves a wrong alert?"
+A: "Three safeguards: confidence thresholds, the expert gate itself, and the
+   Mobile Preview before publishing. Plus citizen ground-truth reports can
+   trigger re-assessment if they contradict the alert."
+
+Q: "Why not just use Google Flood Hub?"
+A: "Flood Hub is river gauge-based — not terrain + SAR multi-hazard. It
+   doesn't provide local language alerts, expert review, or explainable AI.
+   We complement it — we fill the last-mile gap."
+
+Q: "Can this work in areas with no internet?"
+A: "The terrain raster is pre-computed and stored locally — no internet
+   needed for each query. SMS via Twilio works on basic cellular networks,
+   no smartphone required for citizens to receive alerts."
+
+Q: "How do you handle cloud cover during monsoon?"
+A: "We prioritise Sentinel-1 SAR — it is an active microwave sensor that
+   penetrates clouds. SAR is our primary sensor precisely because monsoon
+   optical imagery is unreliable."
+
+
+================================================================================
+         GOOD LUCK, TEAM DESTINY!
+         Practice 3x end-to-end. Know every number on screen.
+         The prototype is real — your confidence should be too!
+================================================================================
