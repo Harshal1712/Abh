@@ -26,7 +26,7 @@ export const AlertManagementPage: React.FC = () => {
 
   const filteredAlerts = alerts.filter(a => {
     if (activeTabFilter === 'PENDING_PUBLISH') {
-      return ['DRAFT', 'PENDING_PUBLISH', 'PENDING_APPROVAL'].includes(a.status);
+      return ['DRAFT', 'PENDING_PUBLISH', 'PENDING_APPROVAL', 'APPROVED'].includes(a.status);
     }
     if (activeTabFilter === 'ACTIVE') {
       return ['SENT', 'PARTIAL', 'SENDING', 'ACTIVE'].includes(a.status);

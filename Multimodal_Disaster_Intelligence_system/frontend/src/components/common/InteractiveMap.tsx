@@ -114,6 +114,17 @@ function CameraFollower({ position, follow }: { position?: [number, number]; fol
   return null;
 }
 
+// Auto-close popups when simulation starts to keep map clear
+function PopupCloser({ closeTrigger }: { closeTrigger: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (closeTrigger) {
+      map.closePopup();
+    }
+  }, [closeTrigger, map]);
+  return null;
+}
+
 const createMovingAmbulanceIcon = () => {
   return L.divIcon({
     className: 'moving-ambulance-icon',
@@ -206,6 +217,9 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     const targetLat = clickedPos?.lat || 26.2200;
     const targetLng = clickedPos?.lng || 91.6450;
     const targetName = pointQueryData?.placeName || 'Kamrup Hazard Priority Sector';
+
+    // Clear clickedPos so Sector Analysis side panel yields space to Simulation Aside panel
+    setClickedPos(null);
 
     try {
       const res = await fetch(
@@ -622,6 +636,9 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
               position={simState.waypoints[simState.currentIndex] || simState.waypoints[0]}
               follow={simState.followCamera}
             />
+
+            {/* Auto Close Popups during simulation */}
+            <PopupCloser closeTrigger={Boolean(simState)} />
           </>
         )}
 
@@ -771,7 +788,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       </MapContainer>
       
       {/* Side Panel for Point Query, Emergency Logistics & Route Deployment */}
-      {clickedPos && (
+      {clickedPos && !simState && (
         <div className="absolute top-3 right-3 bottom-3 z-[1000] w-[370px] max-w-[calc(100%-1.5rem)] bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col animate-in slide-in-from-right-4 fade-in duration-200">
           
           {/* Header */}
