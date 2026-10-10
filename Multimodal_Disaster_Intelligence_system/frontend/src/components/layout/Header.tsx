@@ -1,42 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Database, UserCheck, Users, RotateCcw, Menu, Radio, User, LogOut, ChevronDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AuthModal } from '../common/AuthModal';
 import { PublishAlertModal } from '../common/PublishAlertModal';
 
 export const Header: React.FC = () => {
-  const { userRole, setUserRole, resetDemoData, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen } = useApp();
+  const { 
+    userRole, 
+    setUserRole, 
+    resetDemoData, 
+    activeTab, 
+    setActiveTab, 
+    isMobileMenuOpen, 
+    setIsMobileMenuOpen,
+    currentUser,
+    logoutUser,
+    authModalOpen,
+    setAuthModalOpen
+  } = useApp();
 
-  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [publishAlertModalOpen, setPublishAlertModalOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('resqgrid_auth_user');
-      if (stored) {
-        setCurrentUser(JSON.parse(stored));
-      } else {
-        // Auto-seed demo Harshwardhan user
-        const demoUser = {
-          name: 'Harshwardhan',
-          email: 'harsh@resqgrid.com',
-          area: 'Kamrup',
-          role: 'ADMIN',
-        };
-        localStorage.setItem('resqgrid_auth_user', JSON.stringify(demoUser));
-        setCurrentUser(demoUser);
-      }
-    } catch {
-      // Ignore
-    }
-  }, []);
-
   const handleLogout = () => {
-    localStorage.removeItem('resqgrid_auth_user');
-    localStorage.removeItem('resqgrid_auth_token');
-    setCurrentUser(null);
+    logoutUser();
     setUserDropdownOpen(false);
   };
 
@@ -173,9 +160,7 @@ export const Header: React.FC = () => {
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
-        onLoginSuccess={(user) => {
-          setCurrentUser(user);
-        }}
+        onLoginSuccess={() => {}}
       />
 
       {/* Publish Alert Modal */}

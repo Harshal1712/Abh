@@ -62,6 +62,12 @@ interface AppContextType {
 
   dispatchModalData: any | null;
   setDispatchModalData: (data: any) => void;
+
+  currentUser: any | null;
+  loginUser: (user: any, token?: string) => void;
+  logoutUser: () => void;
+  authModalOpen: boolean;
+  setAuthModalOpen: (open: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -90,6 +96,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [dispatchModalData, setDispatchModalData] = useState<any | null>(null);
+
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any | null>(() => {
+    try {
+      const stored = localStorage.getItem('resqgrid_auth_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Sync role based on logged in user
+  useEffect(() => {
+    if (currentUser) {
+      if (['ADMIN', 'EXPERT', 'DISPATCHER', 'FIRST_RESPONDER'].includes(currentUser.role)) {
+        setUserRoleState('EXPERT');
+      } else if (currentUser.role === 'CITIZEN') {
+        setUserRoleState('CITIZEN');
+      }
+    }
+  }, []);
+
+  const loginUser = (user: any, token?: string) => {
+    setCurrentUser(user);
+    localStorage.setItem('resqgrid_auth_user', JSON.stringify(user));
+    if (token) localStorage.setItem('resqgrid_auth_token', token);
+
+    if (['ADMIN', 'EXPERT', 'DISPATCHER', 'FIRST_RESPONDER'].includes(user.role)) {
+      setUserRoleState('EXPERT');
+      setActiveTabState('dashboard');
+    } else {
+      setUserRoleState('CITIZEN');
+    }
+  };
+
+  const logoutUser = () => {
+    localStorage.removeItem('resqgrid_auth_user');
+    localStorage.removeItem('resqgrid_auth_token');
+    setCurrentUser(null);
+    setUserRoleState('CITIZEN');
+  };
 
   const [events, setEvents] = useState<HazardEvent[]>(() => {
     return INITIAL_EVENTS;
@@ -602,7 +649,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resetDemoData,
         createRiskEvent,
         dispatchModalData,
-        setDispatchModalData
+        setDispatchModalData,
+        currentUser,
+        loginUser,
+        logoutUser,
+        authModalOpen,
+        setAuthModalOpen
       }}
     >
       {children}

@@ -2,9 +2,11 @@ import React, { useState, useRef } from 'react';
 import { 
   AlertTriangle, ArrowRight, Camera, CheckCircle2, Compass, Info, MapPin, UserCheck, CloudRain,
   Navigation2, Crosshair, AlertCircle,
-  AlertOctagon, Check, Clock, ChevronRight, ShieldCheck, Route
+  AlertOctagon, Check, Clock, ChevronRight, ShieldCheck, Route,
+  User, LogOut, Shield
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { AuthModal } from '../components/common/AuthModal';
 import type { HazardType, RiskLevel, CommunityAlert } from '../types';
 import exifr from 'exifr';
 
@@ -37,7 +39,7 @@ const ASSAM_DISTRICTS = [
 ];
 
 export const CitizenPortalPage: React.FC = () => {
-  const { alerts, submitReport, setUserRole } = useApp();
+  const { alerts, submitReport, setUserRole, currentUser, logoutUser, authModalOpen, setAuthModalOpen } = useApp();
   
   const [activeTab, setActiveTab] = useState<'HOME' | 'ALERTS' | 'ROADS' | 'WEATHER' | 'REPORT'>('HOME');
   
@@ -428,18 +430,64 @@ export const CitizenPortalPage: React.FC = () => {
       )}
 
       {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-md border-b border-slate-100 shadow-sm relative">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between relative z-10">
+      <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-slate-100 shadow-sm relative">
+        <div className="max-w-4xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3 relative z-10 flex-wrap">
           <div>
-            <h1 className="font-display text-xl font-black tracking-tight text-slate-900">Assam Disaster Alerts</h1>
-            <p className="mt-0.5 text-xs font-medium text-slate-500">Real-time alerts & safety information</p>
+            <h1 className="font-display text-lg sm:text-xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              Assam Disaster Alerts
+            </h1>
+            <p className="text-[11px] font-medium text-slate-500">Real-time alerts & safety information</p>
           </div>
-          <button 
-            onClick={() => setUserRole('EXPERT')} 
-            className="hidden sm:flex text-[10px] font-bold bg-white hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-slate-200 shadow-sm"
-          >
-            Switch to Expert View
-          </button>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {currentUser ? (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-800 font-bold text-xs border border-slate-200 shadow-2xs">
+                  <div className="h-5 w-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-black">
+                    {currentUser.name ? currentUser.name[0].toUpperCase() : 'U'}
+                  </div>
+                  <span className="truncate max-w-[110px]">{currentUser.name}</span>
+                  <span className="text-[10px] text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded font-black">
+                    {currentUser.role}
+                  </span>
+                </div>
+
+                {['ADMIN', 'EXPERT', 'DISPATCHER', 'FIRST_RESPONDER'].includes(currentUser.role) && (
+                  <button
+                    onClick={() => setUserRole('EXPERT')}
+                    className="flex items-center gap-1 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg transition shadow-sm"
+                  >
+                    <Shield className="h-3.5 w-3.5" /> Operations Console
+                  </button>
+                )}
+
+                <button
+                  onClick={logoutUser}
+                  title="Sign Out"
+                  className="flex items-center gap-1 text-xs font-bold text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 transition"
+                >
+                  <LogOut className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Sign Out</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setAuthModalOpen(true)}
+                  className="flex items-center gap-1.5 text-xs font-extrabold bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white px-3.5 py-1.5 rounded-xl transition shadow-md shadow-indigo-200"
+                >
+                  <User className="h-3.5 w-3.5" /> Sign In / Register
+                </button>
+
+                <button 
+                  onClick={() => setUserRole('EXPERT')} 
+                  className="hidden sm:flex text-[11px] font-bold bg-white hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg transition border border-slate-200 shadow-2xs"
+                >
+                  Switch to Expert View
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -646,6 +694,12 @@ export const CitizenPortalPage: React.FC = () => {
         />
       </nav>
 
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onLoginSuccess={() => {}}
+      />
     </div>
   );
 };

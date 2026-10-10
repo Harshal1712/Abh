@@ -53,14 +53,38 @@ router.post('/', async (req, res) => {
     });
     await newAlert.save();
 
-    // Automatically dispatch email notification via Brevo to user email
-    const recipientList: RecipientInfo[] = [
-      {
-        name: 'Harshwardhan Khairnar',
-        email: 'hjkhairnar2104@gmail.com',
-        area: location || 'Assam',
-      },
-    ];
+    // Automatically query ALL registered users in MongoDB Atlas and dispatch alert emails
+    const recipientMap = new Map<string, RecipientInfo>();
+    const allUsers = await User.find({ emailAlertsEnabled: { $ne: false } }).lean();
+    for (const u of allUsers) {
+      if (u.email && u.email.includes('@')) {
+        recipientMap.set(u.email.toLowerCase(), {
+          name: u.name,
+          email: u.email.toLowerCase(),
+          area: u.area || location || 'Assam Sector',
+        });
+      }
+    }
+
+    const allRecipients = await Recipient.find({ isActive: { $ne: false }, emailEnabled: { $ne: false } }).lean();
+    for (const r of allRecipients) {
+      if (r.email && r.email.includes('@')) {
+        recipientMap.set(r.email.toLowerCase(), {
+          name: r.name,
+          email: r.email.toLowerCase(),
+          area: r.district || location || 'Assam Sector',
+        });
+      }
+    }
+
+    // Always include operator email
+    recipientMap.set('hjkhairnar2104@gmail.com', {
+      name: 'Harshwardhan Khairnar',
+      email: 'hjkhairnar2104@gmail.com',
+      area: location || 'Assam Sector',
+    });
+
+    const recipientList: RecipientInfo[] = Array.from(recipientMap.values());
 
     const emailPayload: AlertNotificationPayload = {
       alertId,
@@ -68,7 +92,7 @@ router.post('/', async (req, res) => {
       severity,
       hazardType: hazard,
       location: location || 'Assam Priority Sector',
-      area: location || 'Assam',
+      area: location || 'Assam Sector',
       safetyInstructions: message,
       travelAdvisory: 'Avoid low-lying inundation corridors.',
       shelterRecommendation: 'Designated Multi-Purpose Relief Shelter',
@@ -79,9 +103,10 @@ router.post('/', async (req, res) => {
     res.status(201).json({
       success: true,
       alert: newAlert,
-      message: 'Alert approved and emergency email dispatched via Brevo.',
+      message: `Alert approved and emergency email dispatched to ${recipientList.length} users.`,
       emailDispatched: true,
-      recipient: 'hjkhairnar2104@gmail.com',
+      recipientsCount: recipientList.length,
+      emailList: dispatchResult.successfulEmails,
       dispatchResult,
     });
   } catch (err: any) {
@@ -180,37 +205,29 @@ router.post('/publish', async (req, res) => {
     });
     await newAlert.save();
 
-    // 2. Query all Users and Recipients registered in this specific area
+    // 2. Query ALL registered Users and Recipients across the system
     const recipientMap = new Map<string, RecipientInfo>();
 
-    // Users registered in this area
-    const userQuery: any = { emailAlertsEnabled: { $ne: false } };
-    if (targetArea !== 'ALL') {
-      userQuery.area = targetArea;
-    }
-    const matchedUsers = await User.find(userQuery).lean();
-    for (const u of matchedUsers) {
+    // All registered users with alert notification enabled
+    const allUsers = await User.find({ emailAlertsEnabled: { $ne: false } }).lean();
+    for (const u of allUsers) {
       if (u.email && u.email.includes('@')) {
         recipientMap.set(u.email.toLowerCase(), {
           name: u.name,
           email: u.email.toLowerCase(),
-          area: u.area,
+          area: u.area || targetArea,
         });
       }
     }
 
-    // Recipients subscribed in this district
-    const recQuery: any = { isActive: { $ne: false }, emailEnabled: { $ne: false } };
-    if (targetArea !== 'ALL') {
-      recQuery.district = targetArea;
-    }
-    const matchedRecipients = await Recipient.find(recQuery).lean();
+    // Recipients subscribed in database
+    const matchedRecipients = await Recipient.find({ isActive: { $ne: false }, emailEnabled: { $ne: false } }).lean();
     for (const r of matchedRecipients) {
       if (r.email && r.email.includes('@')) {
         recipientMap.set(r.email.toLowerCase(), {
           name: r.name,
           email: r.email.toLowerCase(),
-          area: r.district,
+          area: r.district || targetArea,
         });
       }
     }

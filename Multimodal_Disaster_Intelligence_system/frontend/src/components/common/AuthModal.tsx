@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, User, Mail, Lock, MapPin, Phone, Shield, CheckCircle2, ArrowRight, LogIn, UserPlus } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
 
 const DISTRICTS = [
   'Kamrup',
@@ -21,6 +22,7 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSuccess }) => {
+  const { loginUser } = useApp();
   const [tab, setTab] = useState<'login' | 'signup'>('login');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,8 +52,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
       if (!res.ok) throw new Error(data.error || 'Login failed');
 
       setSuccessMsg(`Welcome back, ${data.user.name}!`);
-      localStorage.setItem('resqgrid_auth_user', JSON.stringify(data.user));
-      localStorage.setItem('resqgrid_auth_token', data.token);
+      loginUser(data.user, data.token);
 
       setTimeout(() => {
         onLoginSuccess(data.user);
@@ -98,8 +99,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
       if (!res.ok) throw new Error(data.error || 'Registration failed');
 
       setSuccessMsg(`Account created! You will receive emergency alerts for ${data.user.area}.`);
-      localStorage.setItem('resqgrid_auth_user', JSON.stringify(data.user));
-      localStorage.setItem('resqgrid_auth_token', data.token);
+      loginUser(data.user, data.token);
 
       setTimeout(() => {
         onLoginSuccess(data.user);
@@ -279,9 +279,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
                   className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-white"
                 >
                   <option value="CITIZEN">Citizen / Resident</option>
+                  <option value="ADMIN">Admin / Commander</option>
                   <option value="FIRST_RESPONDER">First Responder</option>
                   <option value="DISPATCHER">Emergency Dispatcher</option>
-                  <option value="ADMIN">Command Controller</option>
                 </select>
               </div>
             </div>

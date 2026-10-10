@@ -2,6 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import { User, IUser } from '../models/User';
 import { Recipient } from '../models/Recipient';
+import { sendWelcomeEmail } from '../services/emailService';
 
 const router = Router();
 
@@ -140,6 +141,14 @@ router.post('/signup', async (req, res) => {
     );
 
     const token = crypto.randomBytes(32).toString('hex');
+
+    // Send immediate welcome & disaster alert subscription email
+    sendWelcomeEmail({
+      name: newUser.name,
+      email: newUser.email,
+      area: newUser.area,
+      role: newUser.role,
+    }).catch(e => console.error('[Auth] Failed to dispatch welcome email:', e));
 
     res.status(201).json({
       success: true,
