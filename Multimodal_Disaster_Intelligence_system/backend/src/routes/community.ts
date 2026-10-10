@@ -21,7 +21,13 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 let storage: any;
-if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
+const isCloudinaryReady = 
+  process.env.CLOUDINARY_CLOUD_NAME && 
+  process.env.CLOUDINARY_API_KEY && 
+  /^\d+$/.test(process.env.CLOUDINARY_API_KEY) && 
+  process.env.CLOUDINARY_API_SECRET;
+
+if (isCloudinaryReady) {
   try {
     storage = new CloudinaryStorage({
       cloudinary: cloudinary,
