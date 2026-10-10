@@ -13,17 +13,50 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET || process.env.CLOUDINARY_SECRET_KEY
 });
 
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: async (req, file) => {
-    return {
-      folder: 'disaster_reports',
-      format: 'jpg',
-      public_id: Date.now() + '-' + Math.round(Math.random() * 1E9),
-    };
+import fs from 'fs';
+
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+let storage: any;
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
+  try {
+    storage = new CloudinaryStorage({
+      cloudinary: cloudinary,
+      params: async () => ({
+        folder: 'disaster_reports',
+        format: 'jpg',
+        public_id: Date.now() + '-' + Math.round(Math.random() * 1e9),
+      }),
+    });
+  } catch (err) {
+    console.warn('Falling back to disk storage:', err);
+    storage = multer.diskStorage({
+      destination: (_req, _file, cb) => cb(null, uploadsDir),
+      filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`),
+    });
   }
+} else {
+  storage = multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadsDir),
+    filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`),
+  });
+}
+
+const upload = multer({ storage });
+
+// Single image upload endpoint (Cloudinary / Server CDN)
+router.post('/upload-image', upload.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No image provided' });
+  }
+  const imageUrl = req.file.path && req.file.path.startsWith('http')
+    ? req.file.path
+    : `/uploads/${req.file.filename}`;
+  res.json({ success: true, url: imageUrl });
 });
-const upload = multer({ storage: storage });
 
 // Submit a new community report
 router.post('/report', upload.single('image'), async (req, res) => {

@@ -201,13 +201,35 @@ export const CitizenPortalPage: React.FC = () => {
       });
     }
 
+    let finalPhotoUrl = photoBlobUrl || undefined;
+
+    // Upload to Cloudinary / Server storage if file is present
+    if (selectedImageFile) {
+      try {
+        const formData = new FormData();
+        formData.append('image', selectedImageFile);
+        const uploadRes = await fetch('/api/community/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          if (uploadData.url) {
+            finalPhotoUrl = uploadData.url;
+          }
+        }
+      } catch (err) {
+        console.warn('Image upload error:', err);
+      }
+    }
+
     submitReport({ 
       type: hazardType, 
       location, 
       district: location.includes('(') ? location.split('(')[1].replace(')', '') : 'Kamrup Metro', 
       severity, 
       description: description || 'Local citizen observation reported via mobile crisis app.', 
-      photoUrl: photoBlobUrl || undefined,
+      photoUrl: finalPhotoUrl,
       exifLocation: exifLocation,
       aiAnalysis: finalAiAnalysis
     }); 
