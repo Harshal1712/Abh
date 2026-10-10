@@ -102,8 +102,9 @@ router.post('/', async (req, res) => {
       location: location || 'Assam Priority Sector',
       area: location || 'Assam Sector',
       safetyInstructions: message,
-      travelAdvisory: 'Avoid low-lying inundation corridors.',
-      shelterRecommendation: 'Designated Multi-Purpose Relief Shelter',
+      travelAdvisory: 'Immediate suspension of civilian transit along low-lying inundation routes.',
+      shelterRecommendation: 'Kamrup District Multi-Purpose Flood & Disaster Relief Center',
+      routeAdvice: 'SH-12 Highland Transit Bypass Corridor (Clear of waterlogging)',
     };
 
     const dispatchResult = await sendAreaAlertEmails(emailPayload, recipientList);

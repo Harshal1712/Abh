@@ -22,110 +22,218 @@ export interface RecipientInfo {
 
 function buildAlertHtml(payload: AlertNotificationPayload, recipientName: string): string {
   const isCritical = payload.severity === 'CRITICAL';
-  const bannerColor = isCritical ? '#dc2626' : payload.severity === 'HIGH' ? '#ea580c' : '#d97706';
-  const badgeBg = isCritical ? '#fee2e2' : '#ffedd5';
+  const alertColor = isCritical ? '#dc2626' : payload.severity === 'HIGH' ? '#ea580c' : '#d97706';
+  const alertBgLight = isCritical ? '#fef2f2' : payload.severity === 'HIGH' ? '#fff7ed' : '#fffbeb';
+  const alertBorder = isCritical ? '#f87171' : payload.severity === 'HIGH' ? '#fb923c' : '#fcd34d';
+  const bulletinId = payload.alertId || `SEOC-FLASH-${Date.now().toString().slice(-6)}`;
+  const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) + ' IST';
 
   return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Emergency Alert</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDMA Emergency Disaster Flash Alert</title>
 </head>
-<body style="margin: 0; padding: 20px; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 620px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
-    <!-- Header Banner -->
+<body style="margin: 0; padding: 16px; background-color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1e293b; -webkit-font-smoothing: antialiased;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 14px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2); border: 1px solid #334155;">
+    
+    <!-- Top Government Masthead -->
     <tr>
-      <td style="background-color: ${bannerColor}; padding: 24px; text-align: center; color: #ffffff;">
-        <div style="font-size: 13px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px;">
-          PRALAY-SENSE DISASTER INTELLIGENCE NETWORK
+      <td style="background: linear-gradient(135deg, #090d16 0%, #1e1b4b 100%); padding: 18px 24px; border-bottom: 3px solid ${alertColor}; text-align: center; color: #ffffff;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="text-align: left;">
+              <div style="font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #94a3b8;">
+                GOVERNMENT OF ASSAM · DISASTER MANAGEMENT AUTHORITY (ASDMA)
+              </div>
+              <div style="font-size: 14px; font-weight: 900; color: #f8fafc; margin-top: 3px; letter-spacing: 0.5px;">
+                STATE EMERGENCY OPERATIONS CENTRE (SEOC)
+              </div>
+            </td>
+            <td style="text-align: right; vertical-align: middle;">
+              <span style="display: inline-block; background-color: rgba(220, 38, 38, 0.25); border: 1px solid #ef4444; color: #fecaca; font-size: 11px; font-weight: 900; padding: 4px 10px; border-radius: 6px; letter-spacing: 1px; text-transform: uppercase;">
+                LIVE BROADCAST
+              </span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Red Alert Priority Banner -->
+    <tr>
+      <td style="background-color: ${alertColor}; padding: 20px 24px; text-align: center; color: #ffffff;">
+        <div style="font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.9);">
+          URGENT PUBLIC SAFETY WARNING · LEVEL 3 FLASH ADVISORY
         </div>
-        <h1 style="margin: 0; font-size: 24px; font-weight: 900; line-height: 1.3;">
-          EMERGENCY ALERT: ${payload.severity} WARNING
+        <h1 style="margin: 8px 0 4px; font-size: 24px; font-weight: 900; line-height: 1.25; letter-spacing: -0.5px;">
+          🚨 ${payload.severity} EMERGENCY ALERT: ${payload.title}
         </h1>
-        <div style="font-size: 14px; opacity: 0.95; margin-top: 6px;">
-          Affected Area: <strong>${payload.area || payload.location}</strong>
+        <div style="font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.95); margin-top: 6px;">
+          Target Sector: <strong style="text-decoration: underline;">${payload.area}</strong> (${payload.location})
         </div>
       </td>
     </tr>
 
-    <!-- Body Content -->
+    <!-- Bulletin Metadata Bar -->
     <tr>
-      <td style="padding: 28px 24px;">
-        <p style="font-size: 15px; margin-top: 0; color: #334155;">
-          Dear <strong>${recipientName}</strong>,
+      <td style="background-color: #f1f5f9; padding: 10px 24px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #475569;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td><strong>Bulletin Ref:</strong> <span style="font-family: monospace; color: #0f172a; font-weight: bold;">${bulletinId}</span></td>
+            <td style="text-align: right;"><strong>Issued:</strong> ${timestamp}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Main Content Area -->
+    <tr>
+      <td style="padding: 24px 24px 20px;">
+        <p style="font-size: 15px; margin-top: 0; color: #0f172a; font-weight: 600;">
+          Attention Citizen / First Responder: <strong>${recipientName}</strong>,
         </p>
-        <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-          This is an urgent public safety broadcast from the Disaster Emergency Coordination Command. A severe environmental hazard has been detected and confirmed in your registered locality (<strong>${payload.area}</strong>).
+        <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-bottom: 20px;">
+          The <strong>PRALAY-SENSE Multi-Modal Disaster Intelligence Radar</strong> has detected an imminent and severe environmental threat in your registered sector. Immediate precautionary measures and compliance with evacuation directives are mandatory.
         </p>
 
-        <!-- Warning Card -->
-        <div style="background-color: ${badgeBg}; border-left: 5px solid ${bannerColor}; padding: 16px; border-radius: 8px; margin: 20px 0;">
-          <div style="font-size: 16px; font-weight: 800; color: ${bannerColor}; margin-bottom: 6px;">
-            ${payload.title}
+        <!-- Critical Threat Intelligence Box -->
+        <div style="background-color: ${alertBgLight}; border: 1px solid ${alertBorder}; border-left: 6px solid ${alertColor}; border-radius: 8px; padding: 16px 18px; margin-bottom: 22px;">
+          <div style="font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: ${alertColor}; margin-bottom: 8px;">
+            HAZARD RISK PROFILE & IMPACT FORECAST
           </div>
-          <div style="font-size: 13px; color: #1e293b; line-height: 1.5;">
-            <strong>Hazard Type:</strong> ${payload.hazardType || 'Flood & Debris Flow Risk'}<br>
-            <strong>Severity Level:</strong> <span style="font-weight: 800; color: ${bannerColor};">${payload.severity}</span><br>
-            <strong>Location:</strong> ${payload.location}
-          </div>
-        </div>
-
-        <!-- Evacuation & Safety Advisory -->
-        <div style="background-color: #f1f5f9; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
-          <h3 style="margin-top: 0; margin-bottom: 8px; font-size: 14px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">
-            Action Advisory & Safety Protocols
-          </h3>
-          <p style="font-size: 13px; margin: 0 0 10px 0; color: #334155; line-height: 1.5;">
-            ${payload.safetyInstructions || 'Move immediately to elevated grounds. Avoid low-lying river corridors and flooded roads.'}
-          </p>
-          <div style="font-size: 12px; color: #475569;">
-            <strong>Travel Advisory:</strong> ${payload.travelAdvisory || 'All non-essential travel suspended along affected transit arteries.'}
-          </div>
-          ${
-            payload.shelterRecommendation
-              ? `<div style="font-size: 12px; color: #059669; font-weight: 700; margin-top: 8px;">
-                  Recommended Shelter: ${payload.shelterRecommendation}
-                </div>`
-              : ''
-          }
-          ${
-            payload.routeAdvice
-              ? `<div style="font-size: 12px; color: #2563eb; font-weight: 600; margin-top: 4px;">
-                  Designated Safe Route: ${payload.routeAdvice}
-                </div>`
-              : ''
-          }
-        </div>
-
-        <!-- Emergency Hotlines -->
-        <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 20px;">
-          <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 8px; text-transform: uppercase;">
-            Emergency Response Hotlines
-          </div>
-          <table width="100%" style="font-size: 13px; color: #0f172a;">
+          <table width="100%" cellpadding="4" cellspacing="0" style="font-size: 13px; color: #1e293b;">
             <tr>
-              <td><strong>Ambulance & Medical Trauma:</strong></td>
-              <td style="color: #dc2626; font-weight: 800;">108</td>
+              <td width="35%" style="color: #64748b; font-weight: 600;">Hazard Type:</td>
+              <td style="font-weight: 800; color: #0f172a;">${payload.hazardType || 'Riverine Flash Flood & Inundation Surge'}</td>
             </tr>
             <tr>
-              <td><strong>Disaster Helpline (NDRF / SDRF):</strong></td>
-              <td style="color: #2563eb; font-weight: 800;">1077 / 112</td>
+              <td style="color: #64748b; font-weight: 600;">Severity Classification:</td>
+              <td><span style="background-color: ${alertColor}; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: 900; font-size: 12px;">${payload.severity}</span></td>
             </tr>
             <tr>
-              <td><strong>State Emergency Control Room:</strong></td>
-              <td style="color: #059669; font-weight: 800;">1070</td>
+              <td style="color: #64748b; font-weight: 600;">Identified High-Risk Zone:</td>
+              <td style="font-weight: 700; color: #0f172a;">${payload.location} (${payload.area})</td>
+            </tr>
+            <tr>
+              <td style="color: #64748b; font-weight: 600;">Inundation Threat Level:</td>
+              <td style="font-weight: 700; color: #b91c1c;">Crest Gauge Exceeded · High Surface Runoff Velocity</td>
             </tr>
           </table>
         </div>
+
+        <!-- Evacuation & Safe Passage Directive -->
+        <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px 20px; margin-bottom: 22px;">
+          <div style="font-size: 14px; font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
+            <span style="color: #2563eb;">🛡️</span> MANDATORY EVACUATION & SAFE ROUTE DIRECTIVE
+          </div>
+          <p style="font-size: 14px; line-height: 1.6; color: #1e293b; font-weight: 600; margin: 0 0 14px 0; background-color: #ffffff; padding: 12px; border-radius: 6px; border-left: 4px solid #2563eb;">
+            ${payload.safetyInstructions || 'Move immediately to elevated grounds. Vacate single-story ground residences along the river embankment corridor.'}
+          </p>
+
+          <table width="100%" cellpadding="6" cellspacing="0" style="font-size: 13px;">
+            <tr>
+              <td width="38%" style="font-weight: 700; color: #047857;">🏢 Designated Safe Shelter:</td>
+              <td style="font-weight: 800; color: #065f46; background-color: #ecfdf5; padding: 6px 10px; border-radius: 6px;">
+                ${payload.shelterRecommendation || 'Kamrup District Multi-Purpose Flood & Disaster Relief Center'}
+              </td>
+            </tr>
+            <tr>
+              <td style="font-weight: 700; color: #1d4ed8; padding-top: 10px;">🛣️ Recommended Safe Route:</td>
+              <td style="font-weight: 800; color: #1e40af; background-color: #eff6ff; padding: 6px 10px; border-radius: 6px;">
+                ${payload.routeAdvice || 'SH-12 Highland Transit Bypass Corridor (Clear of waterlogging)'}
+              </td>
+            </tr>
+            <tr>
+              <td style="font-weight: 700; color: #b45309; padding-top: 10px;">⚠️ Transit Advisory:</td>
+              <td style="font-size: 12px; color: #92400e; padding-top: 10px;">
+                ${payload.travelAdvisory || 'Strict travel ban on low-lying underpasses, culverts, and unpaved embankment roads.'}
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Official DO's and DON'Ts Checklist -->
+        <div style="margin-bottom: 22px;">
+          <div style="font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; color: #0f172a; margin-bottom: 10px;">
+            CRITICAL SAFETY PROTOCOLS: DO's AND DON'Ts
+          </div>
+          <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 12px; line-height: 1.5;">
+            <tr>
+              <!-- DO'S -->
+              <td width="48%" style="vertical-align: top; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 14px;">
+                <div style="font-weight: 900; color: #15803d; font-size: 12px; margin-bottom: 6px; text-transform: uppercase;">
+                  ✅ DO'S (PROTECT LIFE)
+                </div>
+                <ul style="margin: 0; padding-left: 16px; color: #166534;">
+                  <li style="margin-bottom: 4px;">Move immediately to designated relief shelters or upper floors.</li>
+                  <li style="margin-bottom: 4px;">Pack essential Go-Bag: drinking water, medicines, torch, power bank, IDs.</li>
+                  <li style="margin-bottom: 4px;">Switch off electrical mains and LPG cylinder valves before leaving.</li>
+                  <li>Keep battery-operated radio or phone tuned to PRALAY-SENSE alerts.</li>
+                </ul>
+              </td>
+              <td width="4%">&nbsp;</td>
+              <!-- DON'TS -->
+              <td width="48%" style="vertical-align: top; background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 14px;">
+                <div style="font-weight: 900; color: #b91c1c; font-size: 12px; margin-bottom: 6px; text-transform: uppercase;">
+                  ❌ DON'TS (AVOID DANGER)
+                </div>
+                <ul style="margin: 0; padding-left: 16px; color: #991b1b;">
+                  <li style="margin-bottom: 4px;">DO NOT walk, swim, or drive through flooded roads (Turn Around, Don't Drown).</li>
+                  <li style="margin-bottom: 4px;">DO NOT touch fallen electrical cables, electric poles, or submerged wires.</li>
+                  <li style="margin-bottom: 4px;">DO NOT consume untreated tap water or flood water.</li>
+                  <li>DO NOT spread unverified rumors; follow official SDRF directives.</li>
+                </ul>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- 24x7 State Emergency Helplines -->
+        <div style="background-color: #0f172a; border-radius: 10px; padding: 16px 20px; color: #ffffff; margin-bottom: 10px;">
+          <div style="font-size: 12px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; color: #38bdf8; margin-bottom: 10px;">
+            24x7 TOLL-FREE EMERGENCY CRISIS HELPLINES
+          </div>
+          <table width="100%" cellpadding="4" cellspacing="0" style="font-size: 13px;">
+            <tr>
+              <td width="60%" style="color: #cbd5e1;">Unified National Emergency Helpline:</td>
+              <td style="color: #f87171; font-weight: 900; font-size: 16px;">112</td>
+            </tr>
+            <tr>
+              <td style="color: #cbd5e1;">District Disaster Management (NDRF / SDRF):</td>
+              <td style="color: #60a5fa; font-weight: 900; font-size: 15px;">1077</td>
+            </tr>
+            <tr>
+              <td style="color: #cbd5e1;">Emergency Medical Ambulance & Trauma Care:</td>
+              <td style="color: #4ade80; font-weight: 900; font-size: 15px;">108</td>
+            </tr>
+            <tr>
+              <td style="color: #cbd5e1;">State Emergency Operations Centre (SEOC):</td>
+              <td style="color: #fbbf24; font-weight: 900; font-size: 15px;">1070</td>
+            </tr>
+            <tr>
+              <td style="color: #cbd5e1;">Fire & Emergency Rescue Services:</td>
+              <td style="color: #f472b6; font-weight: 900; font-size: 15px;">101</td>
+            </tr>
+          </table>
+        </div>
+
       </td>
     </tr>
 
-    <!-- Footer -->
+    <!-- Official Seal & Legal Footer -->
     <tr>
-      <td style="background-color: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8;">
-        ResQGrid & PRALAY-SENSE Multimodal Disaster Intelligence System<br>
-        You are receiving this alert because your profile is registered in the <strong>${payload.area}</strong> jurisdiction.
+      <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 24px; text-align: center; font-size: 11px; color: #64748b; line-height: 1.5;">
+        <div style="font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+          PRALAY-SENSE · MULTI-MODAL DISASTER INTELLIGENCE & RESILIENCE NETWORK
+        </div>
+        <div>
+          Joint Command: State Disaster Management Authority & Emergency Relief Operations Center.<br>
+          Official Alert ID: <strong style="font-family: monospace;">${bulletinId}</strong> · Sector: <strong>${payload.area}</strong>.<br>
+          This is an automated priority emergency broadcast transmitted to registered citizens and response squads.
+        </div>
       </td>
     </tr>
   </table>
@@ -244,16 +352,20 @@ export async function sendAreaAlertEmails(
               'Referer': 'https://pralaysense.disaster.gov.in/alerts'
             },
             body: JSON.stringify({
-              _subject: `🚨 [${payload.severity}] Public Safety Alert: ${payload.title} (${payload.area})`,
-              HazardType: payload.hazardType,
-              Location: payload.location,
-              Area: payload.area,
-              SafetyInstructions: payload.safetyInstructions,
-              TravelAdvisory: payload.travelAdvisory || 'Avoid inundation corridors',
-              ShelterRecommendation: payload.shelterRecommendation || 'Designated Community Shelter',
-              EvacuationRoute: payload.routeAdvice || 'Main highland bypass',
-              EmergencyHelplines: '108 (Ambulance), 1077 (Disaster), 112 (Unified)',
-              DisasterIntelligenceSystem: 'PRALAY-SENSE & ResQGrid Real-Time Warning Network'
+              _subject: `🚨 [SDMA ${payload.severity} FLASH ALERT] ${payload.title} - ${payload.area}`,
+              OFFICIAL_AUTHORITY: 'GOVERNMENT OF ASSAM · STATE DISASTER MANAGEMENT AUTHORITY (SEOC)',
+              BULLETIN_ID: payload.alertId || `SEOC-FLASH-${Date.now().toString().slice(-6)}`,
+              ALERT_LEVEL: `🚨 ${payload.severity} EMERGENCY FLASH WARNING`,
+              HAZARD_TYPE: payload.hazardType || 'Riverine Flash Flood & Inundation Surge',
+              AFFECTED_JURISDICTION: `${payload.area} Sector (${payload.location})`,
+              ACTION_DIRECTIVE: payload.safetyInstructions || 'Move immediately to elevated grounds or designated relief centers.',
+              DESIGNATED_RELIEF_SHELTER: payload.shelterRecommendation || 'Kamrup Multi-Purpose Disaster Relief Center',
+              RECOMMENDED_SAFE_ROUTE: payload.routeAdvice || 'SH-12 Highland Transit Bypass Corridor (Clear of waterlogging)',
+              TRAVEL_RESTRICTION: payload.travelAdvisory || 'Strict transit suspension on low-lying underpasses and river corridors.',
+              SAFETY_DOS_CHECKLIST: '1. Move to upper floors/shelter. 2. Pack emergency Go-Bag (water, torch, first-aid, IDs). 3. Switch off main power & gas.',
+              SAFETY_DONTS_CHECKLIST: '1. DO NOT walk/drive through floodwaters. 2. DO NOT touch fallen electrical wires. 3. DO NOT drink untreated water.',
+              TOLL_FREE_EMERGENCY_HELPLINES: 'National Unified: 112 | NDRF/SDRF Disaster: 1077 | Ambulance: 108 | State SEOC: 1070 | Fire: 101',
+              ISSUANCE_TIMESTAMP: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST'
             })
           });
           const httpsData = await httpsRes.json() as any;
