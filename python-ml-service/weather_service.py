@@ -63,6 +63,7 @@ async def fetch_weather_data(lat: float, lon: float):
         return {
             "rainfall": {"24h_mm": 0, "3d_mm": 0, "7d_mm": 0, "14d_mm": 0, "30d_mm": 0},
             "forecast": {"24h_mm": 0, "72h_mm": 0},
+            "elevation": 120.0,
             "soil_moisture": {"available": False, "value": None, "unit": "m³/m³", "metric": "Topsoil Moisture", "depth": "0-7 cm", "source": "Fallback (API Error)"},
             "retrieved_at": datetime.now(timezone.utc).isoformat(),
             "source": "Fallback"
@@ -123,6 +124,7 @@ def process_weather_data(data: dict) -> dict:
             "metric": "Topsoil Moisture",
             "depth": "0-7 cm",
             "source": "Open-Meteo"
-        }
+        },
+        "elevation": float(data.get("elevation", 120.0))
     }
     return metrics

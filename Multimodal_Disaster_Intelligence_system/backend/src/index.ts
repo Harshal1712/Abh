@@ -14,6 +14,7 @@ import expertRoutes from './routes/expert';
 import communityRoutes from './routes/community';
 import alertsRoutes from './routes/alerts';
 import recipientsRoutes from './routes/recipients';
+import resourcesRoutes from './routes/resources';
 
 // Middleware
 app.use(cors());
@@ -28,6 +29,7 @@ app.use('/api/expert', expertRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/recipients', recipientsRoutes);
+app.use('/api/resources', resourcesRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend is running successfully.' });

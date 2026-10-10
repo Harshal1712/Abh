@@ -8,6 +8,8 @@ import catboost
 try:
     workspace = os.environ.get("PROJECT_ROOT", os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
     ls_cb_model_path = r"D:\models_v3\landslide_catboost_v3.cbm"
+    if not os.path.exists(ls_cb_model_path):
+        ls_cb_model_path = os.path.join(workspace, "models", "v2", "landslide_catboost_v2_s2.cbm")
     if os.path.exists(ls_cb_model_path):
         landslide_cb_model = catboost.CatBoostClassifier()
         landslide_cb_model.load_model(ls_cb_model_path)
@@ -148,6 +150,11 @@ async def calculate_flood_risk(lat: float, lon: float):
     except Exception as e:
         pass
 
+    if dem_val is None:
+        dem_val = float(weather_metrics.get("elevation", 120.0)) if weather_metrics else 120.0
+    if slope_val is None:
+        slope_val = 5.0
+
     s1_curr_date = "2026-05-26"
     s1_prev_date = "2026-05-14"
     
@@ -202,6 +209,8 @@ async def calculate_flood_risk(lat: float, lon: float):
     try:
         import catboost
         model_path = r"D:\models_v3\flood_catboost_v3.cbm"
+        if not os.path.exists(model_path):
+            model_path = os.path.join(workspace, "models", "v2", "flood_catboost_v2_s2.cbm")
         if os.path.exists(model_path):
             model = catboost.CatBoostClassifier()
             model.load_model(model_path)

@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { 
   AlertTriangle, ArrowRight, Camera, CheckCircle2, Compass, Info, MapPin, UserCheck, CloudRain,
   Navigation2, Crosshair, AlertCircle,
-  AlertOctagon, Check, Clock, ChevronRight, ShieldCheck, Route, Upload
+  AlertOctagon, Check, Clock, ChevronRight, ShieldCheck, Route
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import type { HazardType, RiskLevel, CommunityAlert } from '../types';

@@ -1,11 +1,9 @@
 import React from 'react';
-import { Database, UserCheck, Users, RotateCcw, Menu, PlusCircle } from 'lucide-react';
+import { Database, UserCheck, Users, RotateCcw, Menu } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { FieldReportForm } from '../common/FieldReportForm';
 
 export const Header: React.FC = () => {
   const { userRole, setUserRole, resetDemoData, activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen } = useApp();
-  const [showReportForm, setShowReportForm] = React.useState(false);
 
   return (
     <header className="glass-panel sticky top-0 z-[1500] border-b border-white/70 text-slate-700">

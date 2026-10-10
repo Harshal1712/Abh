@@ -54,7 +54,22 @@ async def get_risk(latitude: float = Query(..., description="Latitude"),
     import time
     t0 = time.perf_counter()
     
-    # 2. Query ML Baseline (1.92 GB raster)
+    # 1. Request Live Weather & Global DEM Elevation (Open-Meteo)
+    t_weather_start = time.perf_counter()
+    try:
+        weather_metrics = await fetch_weather_data(latitude, longitude)
+    except Exception as e:
+        logger.error(f"Weather API failed: {e}")
+        weather_metrics = {
+            "rainfall": {"24h_mm": 0, "3d_mm": 0, "7d_mm": 0, "14d_mm": 0, "30d_mm": 0},
+            "forecast": {"24h_mm": 0, "72h_mm": 0},
+            "elevation": 120.0,
+            "soil_moisture": {"available": False, "value": None, "unit": "m³/m³", "metric": "Topsoil Moisture", "depth": "0-7 cm", "source": "Fallback"}
+        }
+    t_weather_end = time.perf_counter()
+    weather_ms = round((t_weather_end - t_weather_start) * 1000, 2)
+
+    # 2. Query ML Baseline & Terrain
     t_raster_start = time.perf_counter()
     try:
         terrain_data = get_terrain_at_location(latitude, longitude)
@@ -62,8 +77,20 @@ async def get_risk(latitude: float = Query(..., description="Latitude"),
         logger.error(f"Raster read error: {e}")
         terrain_data = {}
 
-    if not terrain_data or terrain_data.get('dem') is None:
-        raise HTTPException(status_code=404, detail="Coordinates outside historical data coverage or no valid terrain.")
+    if not terrain_data:
+        terrain_data = {}
+
+    # If local raster file is missing, fallback to Open-Meteo DEM elevation
+    if terrain_data.get('dem') is None:
+        terrain_data['dem'] = float(weather_metrics.get("elevation", 120.0))
+    if terrain_data.get('slope') is None:
+        terrain_data['slope'] = 12.0
+    if terrain_data.get('aspect') is None:
+        terrain_data['aspect'] = 180.0
+    if terrain_data.get('tri') is None:
+        terrain_data['tri'] = 5.0
+    if terrain_data.get('tpi') is None:
+        terrain_data['tpi'] = 0.5
 
     slope_val = terrain_data.get('slope')
     
@@ -85,16 +112,6 @@ async def get_risk(latitude: float = Query(..., description="Latitude"),
     
     t_raster_end = time.perf_counter()
     raster_ms = round((t_raster_end - t_raster_start) * 1000, 2)
-    
-    # 3. Request Live Weather (Open-Meteo)
-    t_weather_start = time.perf_counter()
-    try:
-        weather_metrics = await fetch_weather_data(latitude, longitude)
-    except Exception as e:
-        logger.error(f"Weather API failed: {e}")
-        raise HTTPException(status_code=503, detail="Current weather data unavailable")
-    t_weather_end = time.perf_counter()
-    weather_ms = round((t_weather_end - t_weather_start) * 1000, 2)
 
     # 3. Calculate Risk
     t_calc_start = time.perf_counter()

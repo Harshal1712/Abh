@@ -311,12 +311,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const selectedEvent = events.find(e => e.id === selectedEventId) || events[0];
 
-  const updateEventStatus = async (eventId: string, newStatus: string) => {
+  const updateEventStatus = async (eventId: string, newStatus: string, reason?: string) => {
     try {
       const res = await fetch(`/api/risk/${eventId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: newStatus, reason })
       });
       if (res.ok) {
         fetchEventsFromServer();

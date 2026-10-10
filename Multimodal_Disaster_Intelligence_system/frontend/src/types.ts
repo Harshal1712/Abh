@@ -189,3 +189,48 @@ export interface RiskThresholds {
   expertApprovalRequired: boolean;
   communityReportAutoVerify: boolean;
 }
+
+export type ResourceType = 'AMBULANCE' | 'RESCUE_TEAM' | 'HOSPITAL' | 'SHELTER' | 'RESCUE_BOAT';
+export type ResourceStatus = 'AVAILABLE' | 'DISPATCHED' | 'EN_ROUTE' | 'BUSY' | 'MAINTENANCE';
+
+export interface EmergencyResource {
+  _id?: string;
+  resourceId: string;
+  name: string;
+  type: ResourceType;
+  status: ResourceStatus;
+  location: {
+    name: string;
+    coordinates: {
+      lat: number;
+      lng: number;
+    };
+  };
+  contact: string;
+  capacity?: number;
+  currentOccupancy?: number;
+  assignedIncident?: string | null;
+  assignedTarget?: {
+    lat: number;
+    lng: number;
+    name?: string;
+  } | null;
+  speedKmh: number;
+  equipment: string[];
+  distanceKm?: number;
+  etaMinutes?: number | null;
+  deployedAt?: string | null;
+}
+
+export interface EmergencyRoute {
+  name: string;
+  status: 'CLEAR' | 'COMPROMISED' | 'BLOCKED';
+  type: 'SAFE_EVACUATION' | 'MEDICAL_TRANSIT' | 'HAZARD_AVOID' | 'DISPATCH_TRANSIT';
+  distanceKm?: number;
+  estimatedDurationMinutes?: number;
+  hazardReason?: string;
+  coordinates: [number, number][];
+  targetShelter?: any;
+  targetHospital?: any;
+}
+

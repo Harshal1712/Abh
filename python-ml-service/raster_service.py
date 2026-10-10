@@ -34,8 +34,11 @@ def init_raster():
     """Initializes the global raster dataset readers."""
     global _raster_dataset, _slope_dataset, _sar_dataset, _aspect_dataset, _tri_dataset, _tpi_dataset, _dem_dataset
     if _raster_dataset is None:
-        logger.info(f"Opening raster dataset: {BASELINE_RASTER_PATH}")
-        _raster_dataset = rasterio.open(BASELINE_RASTER_PATH)
+        try:
+            logger.info(f"Opening raster dataset: {BASELINE_RASTER_PATH}")
+            _raster_dataset = rasterio.open(BASELINE_RASTER_PATH)
+        except Exception as e:
+            logger.error(f"Failed to open baseline raster (needs separate download): {e}")
     if _slope_dataset is None:
         try:
             logger.info(f"Opening slope raster dataset: {SLOPE_RASTER_PATH}")
@@ -83,8 +86,8 @@ def get_baseline_susceptibility(lat: float, lon: float) -> float:
     Returns None if the point is outside the raster bounds or is NoData.
     """
     if _raster_dataset is None:
-        logger.error("Raster dataset not initialized!")
-        raise RuntimeError("Raster dataset not initialized!")
+        logger.warning("Raster dataset not initialized (external raster file missing).")
+        return None
 
     try:
         # Check if point is inside bounds
