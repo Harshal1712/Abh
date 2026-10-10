@@ -53,14 +53,22 @@ router.post('/', async (req, res) => {
     });
     await newAlert.save();
 
-    // Automatically query ALL registered users in MongoDB Atlas and dispatch alert emails
+    // Helper to filter out raw dummy mock domains
+    const isRealEmail = (email: string) => {
+      if (!email || !email.includes('@')) return false;
+      const lower = email.toLowerCase().trim();
+      const dummyDomains = ['example.com', 'gov.in', 'resqgrid.com', 'resqgrid.gov.in'];
+      return !dummyDomains.some(d => lower.endsWith(d));
+    };
+
+    // Automatically query ALL real registered users in MongoDB Atlas
     const recipientMap = new Map<string, RecipientInfo>();
     const allUsers = await User.find({ emailAlertsEnabled: { $ne: false } }).lean();
     for (const u of allUsers) {
-      if (u.email && u.email.includes('@')) {
-        recipientMap.set(u.email.toLowerCase(), {
+      if (u.email && isRealEmail(u.email)) {
+        recipientMap.set(u.email.toLowerCase().trim(), {
           name: u.name,
-          email: u.email.toLowerCase(),
+          email: u.email.toLowerCase().trim(),
           area: u.area || location || 'Assam Sector',
         });
       }
@@ -68,16 +76,16 @@ router.post('/', async (req, res) => {
 
     const allRecipients = await Recipient.find({ isActive: { $ne: false }, emailEnabled: { $ne: false } }).lean();
     for (const r of allRecipients) {
-      if (r.email && r.email.includes('@')) {
-        recipientMap.set(r.email.toLowerCase(), {
+      if (r.email && isRealEmail(r.email)) {
+        recipientMap.set(r.email.toLowerCase().trim(), {
           name: r.name,
-          email: r.email.toLowerCase(),
+          email: r.email.toLowerCase().trim(),
           area: r.district || location || 'Assam Sector',
         });
       }
     }
 
-    // Always include operator email
+    // Always include user designated email
     recipientMap.set('hjkhairnar2104@gmail.com', {
       name: 'Harshwardhan Khairnar',
       email: 'hjkhairnar2104@gmail.com',
@@ -205,28 +213,35 @@ router.post('/publish', async (req, res) => {
     });
     await newAlert.save();
 
-    // 2. Query ALL registered Users and Recipients across the system
+    // 2. Query ALL REAL registered Users and Recipients across the system
+    const isRealEmail = (email: string) => {
+      if (!email || !email.includes('@')) return false;
+      const lower = email.toLowerCase().trim();
+      const dummyDomains = ['example.com', 'gov.in', 'resqgrid.com', 'resqgrid.gov.in'];
+      return !dummyDomains.some(d => lower.endsWith(d));
+    };
+
     const recipientMap = new Map<string, RecipientInfo>();
 
-    // All registered users with alert notification enabled
+    // All real registered users with alert notification enabled
     const allUsers = await User.find({ emailAlertsEnabled: { $ne: false } }).lean();
     for (const u of allUsers) {
-      if (u.email && u.email.includes('@')) {
-        recipientMap.set(u.email.toLowerCase(), {
+      if (u.email && isRealEmail(u.email)) {
+        recipientMap.set(u.email.toLowerCase().trim(), {
           name: u.name,
-          email: u.email.toLowerCase(),
+          email: u.email.toLowerCase().trim(),
           area: u.area || targetArea,
         });
       }
     }
 
-    // Recipients subscribed in database
+    // Real recipients subscribed in database
     const matchedRecipients = await Recipient.find({ isActive: { $ne: false }, emailEnabled: { $ne: false } }).lean();
     for (const r of matchedRecipients) {
-      if (r.email && r.email.includes('@')) {
-        recipientMap.set(r.email.toLowerCase(), {
+      if (r.email && isRealEmail(r.email)) {
+        recipientMap.set(r.email.toLowerCase().trim(), {
           name: r.name,
-          email: r.email.toLowerCase(),
+          email: r.email.toLowerCase().trim(),
           area: r.district || targetArea,
         });
       }

@@ -188,7 +188,38 @@ export async function sendAreaAlertEmails(
     let msgId = `MSG-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     let success = false;
 
-    if (transporter && !isSimulated) {
+    // Attempt Brevo HTTPS REST API (Port 443) first if valid API key is present
+    const brevoApiKey = process.env.BREVO_API_KEY;
+    if (brevoApiKey && brevoApiKey.startsWith('xkeysib-')) {
+      try {
+        const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'api-key': brevoApiKey,
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({
+            sender: { name: 'PRALAY-SENSE Emergency Coordination', email: emailFrom },
+            to: [{ email: r.email, name: r.name }],
+            subject: `🚨 [${payload.severity}] Public Safety Alert: ${payload.title} (${payload.area})`,
+            htmlContent: html
+          })
+        });
+        if (res.ok) {
+          const resData = await res.json() as any;
+          msgId = resData?.messageId || `BREVO-HTTPS-${Date.now()}`;
+          success = true;
+          console.log(`[EmailService] Brevo HTTPS API successfully delivered email to ${r.email}`);
+        } else {
+          console.warn(`[EmailService] Brevo HTTPS returned ${res.status}: ${await res.text()}`);
+        }
+      } catch (brevoErr: any) {
+        console.warn(`[EmailService] Brevo HTTPS dispatch failed for ${r.email}:`, brevoErr.message);
+      }
+    }
+
+    if (!success && transporter && !isSimulated) {
       try {
         const info = await Promise.race([
           transporter.sendMail({
@@ -205,7 +236,7 @@ export async function sendAreaAlertEmails(
         console.warn(`[EmailService] SMTP delivery to ${r.email} encountered error (${err.message}). Logging delivery via backup gateway.`);
         success = true;
       }
-    } else {
+    } else if (!success) {
       success = true;
     }
 
@@ -256,18 +287,7 @@ export async function sendWelcomeEmail(user: { name: string; email: string; area
     return true;
   }
 
-  try {
-    const transporter = nodemailer.createTransport({
-      host: emailHost,
-      port: parseInt(process.env.EMAIL_PORT || '587', 10),
-      secure: process.env.EMAIL_PORT === '465',
-      auth: {
-        user: emailUser,
-        pass: emailPass,
-      },
-    });
-
-    const html = `
+  const html = `
 <!DOCTYPE html>
 <html>
 <body style="font-family: Arial, sans-serif; background-color: #f8fafc; padding: 20px; color: #1e293b;">
@@ -299,7 +319,45 @@ export async function sendWelcomeEmail(user: { name: string; email: string; area
   </div>
 </body>
 </html>
-    `;
+  `;
+
+  // Brevo HTTPS REST API pathway
+  const brevoApiKey = process.env.BREVO_API_KEY;
+  if (brevoApiKey && brevoApiKey.startsWith('xkeysib-')) {
+    try {
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': brevoApiKey,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { name: 'PRALAY-SENSE Disaster Alert Network', email: emailFrom },
+          to: [{ email: user.email, name: user.name }],
+          subject: `✅ Welcome to PRALAY-SENSE Disaster Alerts: Registered for ${user.area}`,
+          htmlContent: html
+        })
+      });
+      if (res.ok) {
+        console.log(`[WelcomeEmail] Successfully sent welcome email to ${user.email} via Brevo HTTPS API`);
+        return true;
+      }
+    } catch (e: any) {
+      console.warn(`[WelcomeEmail] Brevo HTTPS failed:`, e.message);
+    }
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: emailHost,
+      port: parseInt(process.env.EMAIL_PORT || '587', 10),
+      secure: process.env.EMAIL_PORT === '465',
+      auth: {
+        user: emailUser,
+        pass: emailPass,
+      },
+    });
 
     await transporter.sendMail({
       from: `"PRALAY-SENSE Disaster Alert Network" <${emailFrom}>`,
