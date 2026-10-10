@@ -6,7 +6,7 @@ import {
   Send, Compass, Phone, Sparkles
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMapEvents, ZoomControl, useMap } from 'react-leaflet';
-import { AmbulanceSimulationHUD, SimulationState } from './AmbulanceSimulationHUD';
+import { AmbulanceSimulationHUD, type SimulationState } from './AmbulanceSimulationHUD';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { HazardEvent, EmergencyResource } from '../../types';
