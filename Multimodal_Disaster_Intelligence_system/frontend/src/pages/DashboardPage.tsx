@@ -8,6 +8,7 @@ import { MetricCard } from '../components/common/MetricCard';
 export const DashboardPage: React.FC = () => {
   const { events, setSelectedEventId, setActiveTab, createRiskEvent } = useApp();
   const [pointQueryData, setPointQueryData] = useState<any>(null);
+  const [selectedDashboardEventId, setSelectedDashboardEventId] = useState<string>(events[0]?.id || '');
 
   const activeHighRiskZones = events.length;
   const floodRiskAreas = events.filter(e => e.primaryHazard === 'FLOOD' || e.primaryHazard === 'MULTI_HAZARD').length;
@@ -118,8 +119,13 @@ export const DashboardPage: React.FC = () => {
           <div className="rounded-2xl overflow-hidden border border-white/5 shadow-2xl">
             <InteractiveMap 
               events={events} 
-              selectedEventId={events[0]?.id} 
-              onSelectEvent={id => open(id,'event-detail')} 
+              selectedEventId={selectedDashboardEventId || events[0]?.id} 
+              onSelectEvent={id => {
+                setSelectedDashboardEventId(id);
+                setSelectedEventId(id);
+                const ev = events.find(e => e.id === id);
+                if (ev) handleMapClick(ev.coordinates.lat, ev.coordinates.lng);
+              }} 
               heightClass="h-[350px] sm:h-[400px] lg:h-[480px]" 
               onMapClick={handleMapClick}
               pointQueryData={pointQueryData}
@@ -168,7 +174,19 @@ export const DashboardPage: React.FC = () => {
               <h3 className="mt-4 text-sm font-bold text-slate-800">Your watchlist is clear</h3>
               <p className="mx-auto mt-1 max-w-[250px] text-xs leading-relaxed text-slate-500">Select a point on the map to generate a risk assessment and begin monitoring it.</p>
             </div>}
-            {events.map(evt => <div key={evt.id} className={`rounded-2xl p-4 transition-all duration-300 relative overflow-hidden group glass-panel ${evt.combinedPriority === 'CRITICAL' ? 'border-red-200' : ''}`}>
+            {events.map(evt => <div 
+              key={evt.id} 
+              onClick={() => {
+                setSelectedDashboardEventId(evt.id);
+                setSelectedEventId(evt.id);
+                handleMapClick(evt.coordinates.lat, evt.coordinates.lng);
+              }}
+              className={`cursor-pointer rounded-2xl p-4 transition-all duration-300 relative overflow-hidden group glass-panel ${
+                (selectedDashboardEventId || events[0]?.id) === evt.id 
+                  ? 'ring-2 ring-indigo-500 border-indigo-300 shadow-md bg-indigo-50/10' 
+                  : 'hover:border-slate-300'
+              } ${evt.combinedPriority === 'CRITICAL' ? 'border-red-200' : ''}`}
+            >
               <div className="flex items-center justify-between mb-2"><span className="font-mono text-[10px] font-bold text-slate-500 tracking-wider">{evt.id}</span><RiskBadge level={evt.combinedPriority} pulse={evt.combinedPriority === 'CRITICAL'} /></div>
               <h3 className="font-bold text-sm text-slate-800 mb-1">{evt.title}</h3><p className="text-[11px] text-slate-500 font-medium mb-4 flex items-center gap-1"><MapPin className="h-3 w-3" /> {evt.location}</p>
                 <div className="grid grid-cols-2 gap-3 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">

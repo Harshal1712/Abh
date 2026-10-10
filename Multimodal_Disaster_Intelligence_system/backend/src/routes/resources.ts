@@ -465,7 +465,7 @@ router.post('/reset', async (req, res) => {
 router.get('/routes/nearby', async (req, res) => {
   try {
     await ensureSeedData();
-    const { lat, lng } = req.query;
+    const { lat, lng, locationName } = req.query;
     if (!lat || !lng) {
       return res.status(400).json({ error: 'Coordinates (lat, lng) are required' });
     }
@@ -514,6 +514,37 @@ router.get('/routes/nearby', async (req, res) => {
       ? calculateDistanceKm(qLat, qLng, nearestHosp.location.coordinates.lat, nearestHosp.location.coordinates.lng)
       : 5.8;
 
+    // Dynamically calculate compromised road name and hazard reason based on location & coordinates
+    let hazardRoadName = 'NH-27 Low-Lying Riverine Corridor (Waterlogging & Landslide Risk)';
+    let hazardRoadReason = 'Inundation depth > 0.8m / Active debris flow sector';
+
+    const locStr = (typeof locationName === 'string' ? locationName : '').toLowerCase();
+
+    if (locStr.includes('paltan') || locStr.includes('nazma') || locStr.includes('gnb') || (Math.abs(qLat - 26.184) < 0.04 && Math.abs(qLng - 91.756) < 0.04)) {
+      hazardRoadName = 'G.N.B Road & Paltan Bazar Underpass Corridor (Urban Waterlogging & Silt Inundation)';
+      hazardRoadReason = 'Stormwater runoff depth > 0.65m / Low-lying railway underpass impassable';
+    } else if (locStr.includes('byrnihat') || locStr.includes('umling') || locStr.includes('ri-bhoi') || (Math.abs(qLat - 26.039) < 0.05 && Math.abs(qLng - 91.794) < 0.05)) {
+      hazardRoadName = 'GS Road Byrnihat Mountain Defile (Rockfall & Slope Failure Hazard)';
+      hazardRoadReason = 'Active mudslide debris flow / Boulder slip blocking south carriageway';
+    } else if (locStr.includes('jalukbari') || locStr.includes('maligaon') || (Math.abs(qLat - 26.15) < 0.03 && Math.abs(qLng - 91.68) < 0.04)) {
+      hazardRoadName = 'Pandu-Jalukbari Foothill Arterial (Hillside Slope Cut Slip)';
+      hazardRoadReason = 'Debris flow from Kamakhya hill slope onto carriage lane';
+    } else if (qLat < 25.80) {
+      hazardRoadName = 'SH-12 Balat-Ranikor Hill Artery (Severe Geotechnical Landslide Hazard)';
+      hazardRoadReason = 'Deep-seated rotational slope failure / 1.1m road subsidence';
+    } else if (qLng < 91.65) {
+      hazardRoadName = 'NH-17 / Rani-Mirza Embankment Corridor (River Inundation Risk)';
+      hazardRoadReason = 'Kulsi river overflow breached shoulder / Water depth > 0.75m';
+    } else if (qLng > 91.85) {
+      hazardRoadName = 'Chandrapur-Panikhaiti Riverbank Arterial (High River Scour Risk)';
+      hazardRoadReason = 'Active riverbank erosion threatening 120m roadway subbase';
+    } else if (locStr) {
+      const cleanLoc = locStr.split(',')[0].replace(/\b\w/g, (c: string) => c.toUpperCase());
+      hazardRoadName = `${cleanLoc} Low-Lying Sector Artery (Waterlogging & Landslide Risk)`;
+      const depth = (0.6 + ((Math.abs(qLat * 100) % 40) / 100)).toFixed(2);
+      hazardRoadReason = `Inundation depth > ${depth}m / Active debris flow sector`;
+    }
+
     res.json({
       success: true,
       queryLocation: { lat: qLat, lng: qLng },
@@ -537,10 +568,10 @@ router.get('/routes/nearby', async (req, res) => {
           targetHospital: nearestHosp,
         },
         compromisedHazardRoad: {
-          name: 'NH-27 Low-Lying Riverine Corridor (Waterlogging & Landslide Risk)',
+          name: hazardRoadName,
           status: 'COMPROMISED',
           type: 'HAZARD_AVOID',
-          hazardReason: 'Inundation depth > 0.8m / Active debris flow sector',
+          hazardReason: hazardRoadReason,
           coordinates: compromisedRoute,
         },
       },

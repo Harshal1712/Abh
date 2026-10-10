@@ -272,9 +272,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   };
 
   // Load nearby evacuation routes for clicked location
-  const loadEvacRoutes = async (lat: number, lng: number) => {
+  const loadEvacRoutes = async (lat: number, lng: number, locName?: string) => {
     try {
-      const res = await fetch(`/api/resources/routes/nearby?lat=${lat}&lng=${lng}`);
+      const nameParam = locName ? `&locationName=${encodeURIComponent(locName)}` : '';
+      const res = await fetch(`/api/resources/routes/nearby?lat=${lat}&lng=${lng}${nameParam}`);
       if (res.ok) {
         const data = await res.json();
         if (data.routes) {
@@ -297,7 +298,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       if (evt) {
         setClickedPos({ lat: evt.coordinates.lat, lng: evt.coordinates.lng });
         loadResources(evt.coordinates.lat, evt.coordinates.lng);
-        loadEvacRoutes(evt.coordinates.lat, evt.coordinates.lng);
+        loadEvacRoutes(evt.coordinates.lat, evt.coordinates.lng, evt.location || evt.title);
         if (onMapClick) {
           onMapClick(evt.coordinates.lat, evt.coordinates.lng);
         }
@@ -308,7 +309,11 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   const handleMapClick = (lat: number, lng: number) => {
     setClickedPos({ lat, lng });
     loadResources(lat, lng);
-    loadEvacRoutes(lat, lng);
+    const matchedEvt = events.find(e => 
+      Math.abs(e.coordinates.lat - lat) < 0.05 && Math.abs(e.coordinates.lng - lng) < 0.05
+    );
+    const locName = matchedEvt?.location || matchedEvt?.title || pointQueryData?.placeName;
+    loadEvacRoutes(lat, lng, locName);
     setSidePanelTab('risk');
     if (onMapClick) {
       onMapClick(lat, lng);
