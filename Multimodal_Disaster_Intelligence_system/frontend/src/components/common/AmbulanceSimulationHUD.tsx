@@ -3,16 +3,12 @@ import {
   Play,
   Pause,
   RotateCcw,
-  FastForward,
   Navigation,
   Compass,
   MapPin,
   Clock,
   Gauge,
-  Hospital,
-  AlertOctagon,
   X,
-  Volume2,
 } from 'lucide-react';
 
 export interface SimulationState {

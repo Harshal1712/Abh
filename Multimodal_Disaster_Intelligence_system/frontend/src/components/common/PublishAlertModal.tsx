@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Send, AlertTriangle, Users, Mail, CheckCircle2, ShieldAlert, Sparkles, MapPin, Radio } from 'lucide-react';
+import { X, Send, AlertTriangle, Mail, CheckCircle2, Radio } from 'lucide-react';
 
 const SECTORS = [
   'Kamrup',
@@ -26,7 +26,7 @@ export const PublishAlertModal: React.FC<PublishAlertModalProps> = ({
   const [area, setArea] = useState('Kamrup');
   const [severity, setSeverity] = useState<'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW'>('CRITICAL');
   const [title, setTitle] = useState('Immediate Riverine Flood Surge & Inundation Warning');
-  const [hazardType, setHazardType] = useState('Flash Flood & River Inundation');
+  const [hazardType] = useState('Flash Flood & River Inundation');
   const [safetyInstructions, setSafetyInstructions] = useState(
     'River gauge level at 2.45m exceeding flood crest. Severe waterlogging along lowland corridor. Evacuate immediately to highland relief facilities.'
   );

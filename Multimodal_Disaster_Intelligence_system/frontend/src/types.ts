@@ -128,6 +128,8 @@ export interface CommunityAlert {
   eventId: string;
   title: string;
   affectedArea: string;
+  area?: string;
+  location?: string;
   hazardType: string;
   severity: RiskLevel;
   status: 'PENDING_PUBLISH' | 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'READY_TO_SEND' | 'SENDING' | 'SENT' | 'PARTIAL' | 'FAILED';
