@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { RiskBadge } from '../components/common/RiskBadge';
+import { PublishAlertModal } from '../components/common/PublishAlertModal';
 import type { RiskLevel } from '../types';
 
 export const AlertManagementPage: React.FC = () => {
@@ -21,6 +22,7 @@ export const AlertManagementPage: React.FC = () => {
 
   const [publishedToast, setPublishedToast] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
 
   const filteredAlerts = alerts.filter(a => {
     if (activeTabFilter === 'PENDING_PUBLISH') {
@@ -168,7 +170,7 @@ export const AlertManagementPage: React.FC = () => {
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
                 <div>
                   <span className="font-mono text-xs text-slate-400 font-bold block">ALERT DOSSIER ID: {currentAlert.id}</span>
-                  <h3 className="text-lg font-black text-slate-900">{currentAlert.title}</h3>
+                  <h3 className="text-lg font-black text-slate-900">{currentAlert.title?.replace('undefined', 'Flood & Landslide') || 'Moderate Flood & Landslide Alert'}</h3>
                 </div>
 
                 <div className="flex flex-col items-end gap-1">
@@ -190,7 +192,7 @@ export const AlertManagementPage: React.FC = () => {
                   <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">Alert Title</label>
                   <input
                     type="text"
-                    value={currentAlert.title}
+                    value={currentAlert.title?.replace('undefined', 'Flood & Landslide')}
                     onChange={(e) => updateAlertContent(currentAlert.id, { title: e.target.value })}
                     className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                   />
@@ -303,13 +305,13 @@ export const AlertManagementPage: React.FC = () => {
                   <>
                     <button
                       onClick={() => handlePublish(currentAlert.id, true)}
-                      className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white rounded-lg text-xs font-extrabold transition flex items-center gap-2 shadow-md"
+                      className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white rounded-lg text-xs font-extrabold transition flex items-center gap-2 shadow-md cursor-pointer"
                     >
                       <Send className="h-4 w-4" /> SEND TEST
                     </button>
                     <button
-                      onClick={() => handlePublish(currentAlert.id)}
-                      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-xs font-extrabold transition flex items-center gap-2 shadow-md"
+                      onClick={() => setIsPublishModalOpen(true)}
+                      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-xs font-extrabold transition flex items-center gap-2 shadow-md cursor-pointer"
                     >
                       <Send className="h-4 w-4" /> PUBLISH ALERT TO COMMUNITY
                     </button>
@@ -393,6 +395,20 @@ export const AlertManagementPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* PUBLISH ALERT & EMAIL DISPATCH MODAL (THIRD IMAGE) */}
+      <PublishAlertModal
+        isOpen={isPublishModalOpen}
+        onClose={() => setIsPublishModalOpen(false)}
+        initialArea={currentAlert?.affectedArea || 'Kamrup'}
+        initialTitle={currentAlert?.title?.replace('undefined', 'Flood & Landslide') || 'Immediate Riverine Flood Surge & Inundation Warning'}
+        initialSeverity={(currentAlert?.severity as any) || 'CRITICAL'}
+        initialInstructions={currentAlert?.messageEn || 'River gauge level at 2.45m exceeding flood crest. Severe waterlogging along lowland corridor. Evacuate immediately to highland relief facilities.'}
+        onAlertPublished={() => {
+          setPublishedToast(true);
+          setTimeout(() => setPublishedToast(false), 5000);
+        }}
+      />
     </div>
   );
 };

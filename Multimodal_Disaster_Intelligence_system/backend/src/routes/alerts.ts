@@ -25,6 +25,71 @@ router.get('/', async (req, res) => {
   }
 });
 
+// POST Create & Dispatch Alert on Expert Approval (Used by AppContext approveEvent)
+router.post('/', async (req, res) => {
+  try {
+    const {
+      eventId,
+      hazard,
+      severity = 'HIGH',
+      location,
+      message,
+      riskScore,
+    } = req.body;
+
+    const alertId = `ALT-${Date.now().toString().slice(-6)}`;
+    const newAlert = new Alert({
+      alertId,
+      eventId,
+      hazardType: hazard || 'Flood + Landslide',
+      severity,
+      location: location || 'Assam Priority Sector',
+      travelAdvisory: 'Travel advisory active. Move to designated higher ground.',
+      safetyInstructions: message || 'High flood and landslide risk identified. Follow emergency instructions.',
+      status: 'APPROVED',
+      public: true,
+      active: true,
+      approvedAt: new Date(),
+    });
+    await newAlert.save();
+
+    // Automatically dispatch email notification via Brevo to user email
+    const recipientList: RecipientInfo[] = [
+      {
+        name: 'Harshwardhan Khairnar',
+        email: 'hjkhairnar2104@gmail.com',
+        area: location || 'Assam',
+      },
+    ];
+
+    const emailPayload: AlertNotificationPayload = {
+      alertId,
+      title: `${severity} Emergency Alert: ${hazard || 'Hazard Event'}`,
+      severity,
+      hazardType: hazard,
+      location: location || 'Assam Priority Sector',
+      area: location || 'Assam',
+      safetyInstructions: message,
+      travelAdvisory: 'Avoid low-lying inundation corridors.',
+      shelterRecommendation: 'Designated Multi-Purpose Relief Shelter',
+    };
+
+    const dispatchResult = await sendAreaAlertEmails(emailPayload, recipientList);
+
+    res.status(201).json({
+      success: true,
+      alert: newAlert,
+      message: 'Alert approved and emergency email dispatched via Brevo.',
+      emailDispatched: true,
+      recipient: 'hjkhairnar2104@gmail.com',
+      dispatchResult,
+    });
+  } catch (err: any) {
+    console.error('[CreateAlert] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Phase 4: Offline PWA & Citizen Alert Page Sync
 router.get('/public/alerts/sync', async (req, res) => {
   try {
@@ -150,19 +215,12 @@ router.post('/publish', async (req, res) => {
       }
     }
 
-    // Fallback: If area has no registered citizens yet, include admin and test recipient
-    if (recipientMap.size === 0) {
-      recipientMap.set('harshwardhan.response@disaster.gov.in', {
-        name: 'Emergency Command Controller',
-        email: 'harshwardhan.response@disaster.gov.in',
-        area: targetArea,
-      });
-      recipientMap.set('citizens.' + targetArea.toLowerCase().replace(/\s+/g, '') + '@disaster.assam.gov.in', {
-        name: `${targetArea} Citizen Watch Group`,
-        email: `citizens.${targetArea.toLowerCase().replace(/\s+/g, '')}@disaster.assam.gov.in`,
-        area: targetArea,
-      });
-    }
+    // Always include user's designated email
+    recipientMap.set('hjkhairnar2104@gmail.com', {
+      name: 'Harshwardhan Khairnar',
+      email: 'hjkhairnar2104@gmail.com',
+      area: targetArea,
+    });
 
     const recipientsList = Array.from(recipientMap.values());
 

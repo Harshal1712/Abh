@@ -70,7 +70,7 @@ export const AmbulanceSimulationHUD: React.FC<AmbulanceSimulationHUDProps> = ({
       : 'Navigating optimal highland road artery';
 
   return (
-    <div className="absolute bottom-4 left-4 right-4 sm:left-6 sm:right-auto sm:w-[480px] z-[2000] font-sans animate-in slide-in-from-bottom duration-300">
+    <div className="absolute bottom-4 right-4 left-4 sm:left-auto sm:right-6 sm:w-[480px] z-[2000] font-sans animate-in slide-in-from-right duration-300">
       <div className="bg-slate-950/90 text-white rounded-2xl shadow-2xl border border-white/20 backdrop-blur-xl overflow-hidden p-4 space-y-3">
         {/* Top Header with Siren & Close */}
         <div className="flex items-center justify-between border-b border-white/10 pb-2.5">

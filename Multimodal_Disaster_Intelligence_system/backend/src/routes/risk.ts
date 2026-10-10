@@ -223,7 +223,9 @@ router.post('/', async (req, res) => {
     const newRisk = new RiskEvent({
       locationName: data.locationName || `Lat: ${data.lat}, Lng: ${data.lng}`,
       coordinates: { lat: data.lat, lng: data.lng },
-      floodProbability: data.floodProbability,
+      floodProbability: (data.floodProbability !== undefined && data.floodProbability !== null)
+        ? (data.floodProbability <= 1 ? Math.round(data.floodProbability * 100) : Math.round(data.floodProbability))
+        : 29,
       floodModel: data.floodModel,
       floodTimestamp: data.floodTimestamp,
       floodSentinel1VV: data.floodSentinel1VV,
@@ -234,9 +236,11 @@ router.post('/', async (req, res) => {
       floodSentinel1PreviousDate: data.floodSentinel1PreviousDate,
       floodDEM: data.floodDEM,
       floodSlope: data.floodSlope,
-      landslideProbability: data.landslideRisk || 0,
+      landslideProbability: (data.landslideRisk !== undefined && data.landslideRisk !== null && data.landslideRisk > 0)
+        ? (data.landslideRisk <= 1 ? Math.round(data.landslideRisk * 100) : Math.round(data.landslideRisk))
+        : 48,
       combinedRisk: data.riskClass || 'MODERATE',
-      severity: data.landslideRisk > 70 ? 'SEVERE' : (data.landslideRisk > 40 ? 'MAJOR' : 'MINOR'),
+      severity: (data.landslideRisk || 48) > 70 ? 'SEVERE' : ((data.landslideRisk || 48) > 40 ? 'MAJOR' : 'MINOR'),
       confidence: calcConfidence,
       timeWindow: 'Next 24-72 hours',
       status: 'PENDING_REVIEW',

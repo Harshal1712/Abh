@@ -14,12 +14,22 @@ import type { HazardEvent, EmergencyResource } from '../../types';
 // Local inline SVG pin icon to eliminate external unpkg requests and Tracking Prevention warnings
 const defaultPinSvg = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="24" height="36"><path fill="%232563eb" stroke="%23ffffff" stroke-width="2" d="M12 0C5.37 0 0 5.37 0 12c0 9 12 24 12 24s12-15 12-24c0-6.63-5.37-12-12-12z"/><circle cx="12" cy="12" r="4.5" fill="%23ffffff"/></svg>';
 
+const localDefaultIcon = L.icon({
+  iconUrl: defaultPinSvg,
+  iconRetinaUrl: defaultPinSvg,
+  shadowUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>',
+  iconSize: [24, 36],
+  iconAnchor: [12, 36],
+  popupAnchor: [0, -36],
+});
+
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: defaultPinSvg,
   iconUrl: defaultPinSvg,
-  shadowUrl: '',
+  shadowUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>',
 });
+L.Marker.prototype.options.icon = localDefaultIcon;
 
 // Helper to create distinctive Leaflet DivIcons for each resource type
 const createResourceIcon = (type: string, status: string = 'AVAILABLE') => {
@@ -756,7 +766,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
         {/* Dynamic Point Query Marker */}
         {clickedPos && (
-          <Marker position={[clickedPos.lat, clickedPos.lng]} />
+          <Marker position={[clickedPos.lat, clickedPos.lng]} icon={localDefaultIcon} />
         )}
       </MapContainer>
       

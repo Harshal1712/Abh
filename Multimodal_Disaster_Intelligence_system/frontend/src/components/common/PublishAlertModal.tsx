@@ -16,12 +16,20 @@ interface PublishAlertModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAlertPublished?: (data: any) => void;
+  initialArea?: string;
+  initialTitle?: string;
+  initialSeverity?: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+  initialInstructions?: string;
 }
 
 export const PublishAlertModal: React.FC<PublishAlertModalProps> = ({
   isOpen,
   onClose,
   onAlertPublished,
+  initialArea,
+  initialTitle,
+  initialSeverity,
+  initialInstructions,
 }) => {
   const [area, setArea] = useState('Kamrup');
   const [severity, setSeverity] = useState<'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW'>('CRITICAL');
@@ -34,6 +42,16 @@ export const PublishAlertModal: React.FC<PublishAlertModalProps> = ({
   const [routeAdvice, setRouteAdvice] = useState('Elevated Highland Bypass Corridor (Avoid NH-27 underpasses)');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (initialArea) setArea(initialArea.includes('Kamrup') ? 'Kamrup' : initialArea.split(' ')[0]);
+      if (initialTitle) setTitle(initialTitle);
+      if (initialSeverity) setSeverity(initialSeverity);
+      if (initialInstructions) setSafetyInstructions(initialInstructions);
+      setResult(null);
+    }
+  }, [isOpen, initialArea, initialTitle, initialSeverity, initialInstructions]);
 
   if (!isOpen) return null;
 
@@ -51,6 +69,7 @@ export const PublishAlertModal: React.FC<PublishAlertModalProps> = ({
           hazardType,
           area,
           location: `${area} Disaster Response Zone`,
+          recipientEmail: 'hjkhairnar2104@gmail.com',
           safetyInstructions,
           travelAdvisory: routeAdvice,
           shelterRecommendation: shelter,

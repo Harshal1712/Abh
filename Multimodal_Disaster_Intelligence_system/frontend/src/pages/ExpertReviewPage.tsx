@@ -33,6 +33,7 @@ export const ExpertReviewPage: React.FC = () => {
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [successToast, setSuccessToast] = useState(false);
+  const [emailNotificationToast, setEmailNotificationToast] = useState(false);
   const [explanationText, setExplanationText] = useState<string>('Analyzing model rationale...');
   const [localImpact, setLocalImpact] = useState<any>(null);
   const [computingImpact, setComputingImpact] = useState(false);
@@ -89,19 +90,53 @@ export const ExpertReviewPage: React.FC = () => {
     );
   }
 
-  const handleApproveConfirm = () => {
-    approveEvent(currentEvent.id);
+  const handleApproveConfirm = async () => {
+    setIsModalOpen(false);
+    await approveEvent(currentEvent.id);
+    setEmailNotificationToast(true);
     setSuccessToast(true);
     setTimeout(() => {
       setActiveTab('alert-management');
-    }, 1200);
+    }, 2800);
   };
 
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-300">
+      {/* Top Brevo Email Notification Tab */}
+      {emailNotificationToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] w-full max-w-xl px-4 animate-in slide-in-from-top duration-300">
+          <div className="bg-slate-900 border-2 border-emerald-500 shadow-2xl backdrop-blur-xl p-4 rounded-2xl text-white flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="h-9 w-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="h-6 w-6" />
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-emerald-400 text-xs uppercase tracking-wider">
+                    ALERT APPROVED & EMAIL DISPATCHED
+                  </span>
+                  <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    BREVO SMTP
+                  </span>
+                </div>
+                <p className="text-xs text-slate-200 font-medium mt-0.5">
+                  Emergency broadcast email successfully dispatched to <strong className="text-white">hjkhairnar2104@gmail.com</strong>
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setEmailNotificationToast(false)}
+              className="text-slate-400 hover:text-white font-bold text-lg px-2"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Toast Notification */}
       {successToast && (
-        <div className="fixed top-20 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-emerald-400 animate-bounce">
+        <div className="fixed top-24 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-emerald-400 animate-bounce">
           <CheckCircle2 className="h-6 w-6" />
           <div>
             <h4 className="font-bold text-xs">Event Approved Successfully!</h4>
