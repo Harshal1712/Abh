@@ -20,48 +20,44 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-let storage: any;
-const isCloudinaryReady = 
-  process.env.CLOUDINARY_CLOUD_NAME && 
-  process.env.CLOUDINARY_API_KEY && 
-  /^\d+$/.test(process.env.CLOUDINARY_API_KEY) && 
-  process.env.CLOUDINARY_API_SECRET;
-
-if (isCloudinaryReady) {
-  try {
-    storage = new CloudinaryStorage({
-      cloudinary: cloudinary,
-      params: async () => ({
-        folder: 'disaster_reports',
-        format: 'jpg',
-        public_id: Date.now() + '-' + Math.round(Math.random() * 1e9),
-      }),
-    });
-  } catch (err) {
-    console.warn('Falling back to disk storage:', err);
-    storage = multer.diskStorage({
-      destination: (_req, _file, cb) => cb(null, uploadsDir),
-      filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`),
-    });
-  }
-} else {
-  storage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, uploadsDir),
-    filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`),
-  });
-}
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+  },
+});
 
 const upload = multer({ storage });
 
-// Single image upload endpoint (Cloudinary / Server CDN)
-router.post('/upload-image', upload.single('image'), (req, res) => {
+// Single image upload endpoint (Cloudinary with local server fallback)
+router.post('/upload-image', upload.single('image'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No image provided' });
   }
-  const imageUrl = req.file.path && req.file.path.startsWith('http')
-    ? req.file.path
-    : `/uploads/${req.file.filename}`;
-  res.json({ success: true, url: imageUrl });
+
+  let finalUrl = `/uploads/${req.file.filename}`;
+
+  // Attempt Cloudinary upload if configured
+  if (
+    process.env.CLOUDINARY_CLOUD_NAME && 
+    process.env.CLOUDINARY_API_KEY && 
+    process.env.CLOUDINARY_API_SECRET
+  ) {
+    try {
+      const cRes = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'disaster_reports',
+        resource_type: 'image',
+      });
+      if (cRes && cRes.secure_url) {
+        finalUrl = cRes.secure_url;
+      }
+    } catch (cErr: any) {
+      console.warn('Cloudinary upload fallback to local static CDN:', cErr?.message || cErr);
+    }
+  }
+
+  res.json({ success: true, url: finalUrl });
 });
 
 // Submit a new community report
@@ -79,6 +75,26 @@ router.post('/report', upload.single('image'), async (req, res) => {
       }
     }
 
+    let imageUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+    if (
+      req.file &&
+      process.env.CLOUDINARY_CLOUD_NAME &&
+      process.env.CLOUDINARY_API_KEY &&
+      process.env.CLOUDINARY_API_SECRET
+    ) {
+      try {
+        const cRes = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'disaster_reports',
+          resource_type: 'image',
+        });
+        if (cRes && cRes.secure_url) {
+          imageUrl = cRes.secure_url;
+        }
+      } catch (cErr: any) {
+        console.warn('Cloudinary upload fallback to local static CDN:', cErr?.message || cErr);
+      }
+    }
+
     const report = new CommunityReport({
       locationName,
       coordinates: parsedCoords,
@@ -86,7 +102,7 @@ router.post('/report', upload.single('image'), async (req, res) => {
       description,
       reporterPhone,
       matchedRiskEventId: matchedRiskEventId || undefined,
-      imageUrl: req.file ? req.file.path : undefined,
+      imageUrl,
       status: 'PENDING_VALIDATION'
     });
 
