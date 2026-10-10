@@ -204,7 +204,7 @@ router.post('/assess-event', async (req, res) => {
     
     // Traffic Status Mock
     let trafficStatus = 'NORMAL';
-    if (event.combinedRisk === 'SEVERE' || event.landslideProbability > 60 || (event.floodProbability && event.floodProbability > 60)) {
+    if (event.combinedRisk === 'SEVERE' || (event.landslideProbability && event.landslideProbability > 60) || (event.floodProbability && event.floodProbability > 60)) {
        trafficStatus = 'CONGESTED / ROAD AFFECTED';
     }
 

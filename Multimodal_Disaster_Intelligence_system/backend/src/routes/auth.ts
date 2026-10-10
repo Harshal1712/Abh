@@ -74,7 +74,7 @@ async function ensureSeedUsers() {
         passwordHash: `${salt}:${hash}`,
         phone: u.phone,
         area: u.area,
-        role: u.role,
+        role: u.role as any,
       });
 
       // Also ensure in Recipient collection

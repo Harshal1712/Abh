@@ -328,22 +328,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const hazardName = item.hazardType || item.hazard || 'Flood & Landslide';
             const alertTitle = item.title && !item.title.includes('undefined')
               ? item.title
-              : `${item.severity || 'MODERATE'} ${hazardName} Alert`;
+              : `${item.severity || 'CRITICAL'} Emergency Alert: ${hazardName}`;
+            const targetArea = item.area || item.location || 'Kamrup Priority Sector';
             return {
               id: item._id,
-              eventId: item.eventId?._id || item.eventId,
+              eventId: item.eventId?._id || item.eventId || item._id,
               title: alertTitle,
-              affectedArea: item.location || 'Kamrup Priority Sector',
+              affectedArea: targetArea,
+              area: targetArea,
+              location: item.location || targetArea,
               hazardType: hazardName,
-              severity: item.severity as RiskLevel,
-              status: item.status,
-              messageEn: item.message || item.safetyInstructions || 'High flood and landslide risk identified for your area following expert review. Please remain alert and follow instructions issued by local authorities.',
+              severity: (item.severity || 'HIGH') as RiskLevel,
+              status: item.status || 'ACTIVE',
+              messageEn: item.safetyInstructions || item.message || 'High flood and landslide risk identified for your area following expert review. Please remain alert and follow instructions issued by local authorities.',
               messageHi: '',
               messageLocal: '',
               selectedLanguage: 'en',
-              expiresAt: new Date(Date.now() + 24*60*60*1000).toLocaleString(),
-              approvedBy: item.approvedBy || 'System',
+              issuedAt: item.approvedAt ? new Date(item.approvedAt).toLocaleString() : new Date(item.createdAt || Date.now()).toLocaleString(),
+              expiresAt: item.expiresAt ? new Date(item.expiresAt).toLocaleString() : new Date(Date.now() + 24*60*60*1000).toLocaleString(),
+              approvedBy: item.approvedBy || 'Assam SDMA Operations Center',
               verifiedByExpert: true,
+              shelterRecommendation: item.shelterRecommendation || 'Kamrup District Multi-Purpose Flood & Disaster Relief Center',
+              routeAdvice: item.routeAdvice || 'SH-12 Highland Transit Bypass Corridor (Clear of waterlogging)',
+              travelAdvisory: item.travelAdvisory || 'Immediate travel advisory in effect. Avoid waterlogged transit corridors.',
+              safetyInstructions: item.safetyInstructions || item.message,
+              createdAt: item.createdAt,
               deliveryStats: item.deliveryStats,
               failureReasons: item.failureReasons
             };
@@ -354,10 +363,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .catch(e => console.error("Failed to fetch backend alerts:", e));
   };
 
-  // Fetch events and alerts from real backend on mount
+  // Fetch events and alerts from real backend on mount and sync continuously
   useEffect(() => {
     fetchEventsFromServer();
     fetchAlertsFromServer();
+
+    const interval = setInterval(() => {
+      fetchAlertsFromServer();
+    }, 6000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const createRiskEvent = async (data: any) => {
@@ -499,7 +514,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newReport: CommunityReport = {
       ...reportData,
       id: `REP-${Math.floor(100 + Math.random() * 900)}`,
-      timestamp: '18 Aug 2026, 11:05 AM',
+      timestamp: 'Today, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'UNVERIFIED'
     };
 

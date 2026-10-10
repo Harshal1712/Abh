@@ -157,6 +157,22 @@ export interface CommunityAlert {
   affectedHospitals?: number;
   trafficStatus?: string;
   alternativeRouteAvailable?: boolean;
+  shelterRecommendation?: string;
+  routeAdvice?: string;
+  travelAdvisory?: string;
+  safetyInstructions?: string;
+  createdAt?: string;
+}
+
+export interface ReportAiAnalysis {
+  isValid: boolean;
+  confidence: number;
+  label: 'GENUINE HAZARD' | 'SUSPICIOUS / LOW RELEVANCE' | 'INCONCLUSIVE';
+  reasoning: string;
+  recommendation: 'ACCEPT' | 'REJECT';
+  detectedFeatures: string[];
+  analyzedAt: string;
+  environmentalMatchScore?: number;
 }
 
 export interface CommunityReport {
@@ -174,6 +190,7 @@ export interface CommunityReport {
   reporterId?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  aiAnalysis?: ReportAiAnalysis;
 }
 
 export interface DataSourceStatus {

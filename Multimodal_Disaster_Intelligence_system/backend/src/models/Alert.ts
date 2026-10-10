@@ -3,6 +3,8 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IAlert extends Document {
   alertId: string;
   eventId?: mongoose.Types.ObjectId;
+  title?: string;
+  area?: string;
   hazardType: string;
   severity: string;
   location: string;
@@ -12,6 +14,8 @@ export interface IAlert extends Document {
   travelAdvisory: string;
   weatherSummary: any;
   safetyInstructions: string;
+  shelterRecommendation?: string;
+  routeAdvice?: string;
   status: 'APPROVED' | 'EXPIRED' | 'REVOKED';
   public: boolean;
   active: boolean;
@@ -24,6 +28,8 @@ export interface IAlert extends Document {
 const AlertSchema: Schema = new Schema({
   alertId: { type: String, required: true, unique: true },
   eventId: { type: Schema.Types.ObjectId, ref: 'RiskEvent' },
+  title: { type: String },
+  area: { type: String },
   hazardType: { type: String, required: true },
   severity: { type: String, required: true },
   location: { type: String, required: true },
@@ -33,6 +39,8 @@ const AlertSchema: Schema = new Schema({
   travelAdvisory: { type: String },
   weatherSummary: { type: Schema.Types.Mixed },
   safetyInstructions: { type: String },
+  shelterRecommendation: { type: String },
+  routeAdvice: { type: String },
   status: { 
     type: String, 
     enum: ['APPROVED', 'EXPIRED', 'REVOKED'],

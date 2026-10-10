@@ -72,6 +72,13 @@ export interface IRiskEvent extends Document {
   localContributions?: any;
   globalFeatureImportance?: any;
   riskFactorWeighting?: any;
+
+  // Infrastructure Impact & Traffic
+  estimatedBuildingsAffected?: number;
+  affectedSchools?: number;
+  affectedHospitals?: number;
+  trafficStatus?: string;
+  alternativeRouteAvailable?: boolean;
 }
 
 const RiskEventSchema: Schema = new Schema({
@@ -147,7 +154,14 @@ const RiskEventSchema: Schema = new Schema({
   // Model Explainability
   localContributions: { type: Schema.Types.Mixed },
   globalFeatureImportance: { type: Schema.Types.Mixed },
-  riskFactorWeighting: { type: Schema.Types.Mixed }
+  riskFactorWeighting: { type: Schema.Types.Mixed },
+
+  // Infrastructure Impact & Traffic
+  estimatedBuildingsAffected: { type: Number },
+  affectedSchools: { type: Number },
+  affectedHospitals: { type: Number },
+  trafficStatus: { type: String },
+  alternativeRouteAvailable: { type: Boolean, default: true }
 });
 
 export const RiskEvent = mongoose.model<IRiskEvent>('RiskEvent', RiskEventSchema);

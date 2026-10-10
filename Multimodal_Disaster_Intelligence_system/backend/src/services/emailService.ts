@@ -261,7 +261,7 @@ export async function sendAreaAlertEmails(
   const emailPass = process.env.EMAIL_PASSWORD;
   const emailFrom = process.env.EMAIL_FROM || 'alerts@pralaysense.disaster.gov.in';
 
-  let transporter: nodemailer.Transporter | null = null;
+  let transporter: any = null;
   let isSimulated = false;
 
   if (emailHost && emailUser && emailPass) {
@@ -513,5 +513,18 @@ export async function sendWelcomeEmail(user: { name: string; email: string; area
     console.error(`[WelcomeEmail] Failed sending welcome email to ${user.email}:`, err.message);
     return false;
   }
+}
+
+export async function sendEmailAlert(options: { to: string; subject: string; text?: string; html?: string }) {
+  return sendAreaAlertEmails(
+    {
+      title: options.subject,
+      severity: 'HIGH',
+      location: 'Assam Priority Sector',
+      area: 'Assam Sector',
+      safetyInstructions: options.text || options.subject,
+    },
+    [{ name: 'Citizen', email: options.to }]
+  );
 }
 

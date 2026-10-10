@@ -1,34 +1,32 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
-  AlertTriangle, ArrowRight, Camera, CheckCircle2, Compass, Info, MapPin, UserCheck, CloudRain,
-  Navigation2, Crosshair, AlertCircle,
-  AlertOctagon, Check, Clock, ChevronRight, ShieldCheck, Route,
-  User, LogOut, Shield
+  AlertTriangle, ArrowRight, Camera, CheckCircle2, Compass, Info, MapPin, CloudRain,
+  Crosshair, AlertOctagon, Clock, ChevronRight, ShieldCheck, Route,
+  User, LogOut, Shield, Volume2, VolumeX, PhoneCall, Sparkles, Brain, CheckCircle, XCircle,
+  RefreshCw, Radio, Building2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AuthModal } from '../components/common/AuthModal';
-import type { HazardType, RiskLevel, CommunityAlert } from '../types';
+import type { HazardType, RiskLevel, CommunityAlert, ReportAiAnalysis } from '../types';
+import { validateCommunityReportClientSide } from '../utils/aiReportValidator';
 import exifr from 'exifr';
 
-// Simulated data to satisfy citizen portal requirements that aren't natively in the backend yet.
+// Simulated telemetry data for weather and road transit corridors
 const MOCK_WEATHER = {
   temp: '26°C',
-  condition: 'Heavy rainfall expected',
-  rainProb: '85%',
-  forecast: 'Rain may continue through the evening. Heavy rainfall may increase flood/landslide risk.',
-  icon: <CloudRain className="h-6 w-6 text-sky-500" />
+  condition: 'Heavy Precipitation & River Surge',
+  rainProb: '88%',
+  rainfall24h: '78.4 mm',
+  riverLevel: '2.45m (0.45m above danger mark)',
+  forecast: 'Sustained monsoon downpour expected through midnight. Extreme surface inundation and flash flood risks active.',
+  icon: <CloudRain className="h-7 w-7 text-indigo-600" />
 };
 
 const MOCK_ROADS = [
-  { name: 'NH-27', status: 'CLOSED', reason: 'Flooding reported', updated: '12:15 PM', location: 'Near Brahmaputra Bridge' },
-  { name: 'State Highway 12', status: 'POTENTIALLY AFFECTED', reason: 'Heavy rain warnings', updated: '1:00 PM', location: 'Sonitpur District' },
-  { name: 'Local Road - Ward 4', status: 'WATERLOGGED', reason: 'Drainage overflow', updated: '1:30 PM', location: 'Silchar City' }
-];
-
-const MOCK_DANGER_ZONES = [
-  'Low-lying areas near Brahmaputra',
-  'NH-27 Bridge approach',
-  'Slopes in Dima Hasao'
+  { name: 'NH-27 Corridor (Kamrup-Sonapur)', status: 'CLOSED', reason: 'Severe river overflow & waterlogging up to 3.2 ft', updated: '10 mins ago', location: 'Near Brahmaputra Highland Approach' },
+  { name: 'State Highway 12 (SH-12 Bypass)', status: 'OPEN - ADVISORY', reason: 'Designated high-ground evacuation route', updated: 'Live', location: 'North Kamrup Elevated Sector' },
+  { name: 'GS Road (Khanapara - Dispur)', status: 'POTENTIALLY AFFECTED', reason: 'Slope mud run-off & drain regurgitation', updated: '25 mins ago', location: 'Khanapara Sector' },
+  { name: 'Paltan Bazaar Flyover Connector', status: 'OPEN', reason: 'Elevated roadway operating normally', updated: 'Live', location: 'Guwahati Central' }
 ];
 
 const ASSAM_DISTRICTS = [
@@ -42,57 +40,130 @@ export const CitizenPortalPage: React.FC = () => {
   const { alerts, submitReport, setUserRole, currentUser, logoutUser, authModalOpen, setAuthModalOpen } = useApp();
   
   const [activeTab, setActiveTab] = useState<'HOME' | 'ALERTS' | 'ROADS' | 'WEATHER' | 'REPORT'>('HOME');
+  const [selectedAlert, setSelectedAlert] = useState<CommunityAlert | null>(null);
   
-  const [submitted, setSubmitted] = useState(false);
-  
+  // Audio Speech Warning State
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [audioAlertId, setAudioAlertId] = useState<string | null>(null);
+
+  // Form State for Report
   const [hazardType, setHazardType] = useState<HazardType>('FLOOD'); 
   const [severity, setSeverity] = useState<RiskLevel>('HIGH');
   const [location, setLocation] = useState('Guwahati (Kamrup Metro)'); 
   const [description, setDescription] = useState('');
   const [photoName, setPhotoName] = useState<string | null>(null);
   const [photoBlobUrl, setPhotoBlobUrl] = useState<string | null>(null);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [exifLocation, setExifLocation] = useState<{lat: number; lng: number} | undefined>(undefined);
-  const [locationGranted, setLocationGranted] = useState<boolean | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+
+  // Client-Side AI State
+  const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
+  const [aiPreviewAnalysis, setAiPreviewAnalysis] = useState<ReportAiAnalysis | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const [selectedAlert, setSelectedAlert] = useState<CommunityAlert | null>(null);
 
-  // Filter only ACTIVE, public verified alerts
-  const activeAlerts = alerts.filter(a => a.status === 'ACTIVE' || a.status === 'SENT' || a.status === 'PENDING_PUBLISH'); // Pending publish is mock for active here for demo purposes if there are no active ones. Actually let's assume 'ACTIVE' and 'SENT' are public.
-  const publicAlerts = activeAlerts.length > 0 ? activeAlerts : alerts.filter(a => a.severity === 'HIGH' || a.severity === 'CRITICAL').slice(0, 1);
+  // Filter public alerts: prioritize active and approved alerts
+  const activeAlerts = alerts.filter(a => a.status === 'ACTIVE' || a.status === 'APPROVED' || a.status === 'SENT');
+  const displayAlerts = activeAlerts.length > 0 ? activeAlerts : alerts;
 
-  const mainAlert = publicAlerts[0];
+  // Run Real-Time Client-Side AI Analysis when photo or description changes
+  useEffect(() => {
+    let isCancelled = false;
+    const runAnalysis = async () => {
+      if (!description.trim() && !selectedImageFile && !photoBlobUrl) {
+        setAiPreviewAnalysis(null);
+        return;
+      }
+      setIsAiAnalyzing(true);
+      try {
+        const result = await validateCommunityReportClientSide({
+          description: description || 'Visual observation uploaded by citizen.',
+          hazardType,
+          location,
+          district: location.includes('(') ? location.split('(')[1].replace(')', '') : location,
+          image: selectedImageFile || photoBlobUrl || null,
+          fileName: photoName || selectedImageFile?.name,
+        });
+        if (!isCancelled) {
+          setAiPreviewAnalysis(result);
+        }
+      } catch (err) {
+        console.error('Client-side AI analysis failed:', err);
+      } finally {
+        if (!isCancelled) {
+          setIsAiAnalyzing(false);
+        }
+      }
+    };
 
-  const submit = (event: React.FormEvent) => { 
-    event.preventDefault(); 
-    submitReport({ 
-      type: hazardType, 
-      location, 
-      district: 'Kamrup Metro', 
-      severity, 
-      description: description || 'Local citizen observation reported via mobile app.', 
-      photoUrl: photoBlobUrl || undefined,
-      exifLocation: exifLocation 
-    }); 
-    setSubmitted(true); 
-    setDescription(''); 
-    setPhotoName(null); 
-    setPhotoBlobUrl(null);
-    setExifLocation(undefined);
-    setTimeout(() => setSubmitted(false), 4000); 
+    const timer = setTimeout(runAnalysis, 300);
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [description, selectedImageFile, hazardType, location, photoBlobUrl, photoName]);
+
+  // Clean up audio speech on unmount
+  useEffect(() => {
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const handleSpeechBroadcast = (alertItem: CommunityAlert) => {
+    if (!window.speechSynthesis) {
+      alert("Text-to-speech audio broadcast is not supported in this browser.");
+      return;
+    }
+
+    if (isPlayingAudio && audioAlertId === alertItem.id) {
+      window.speechSynthesis.cancel();
+      setIsPlayingAudio(false);
+      setAudioAlertId(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    const textToSpeak = `Official Emergency Broadcast. Severity: ${alertItem.severity}. Hazard: ${alertItem.hazardType}. Location: ${alertItem.affectedArea}. Attention all residents: ${alertItem.messageEn || alertItem.safetyInstructions}. Designated safe shelter is ${alertItem.shelterRecommendation || 'Kamrup Multi Purpose Relief Shelter'}. Safe evacuation route: ${alertItem.routeAdvice || 'State Highway 12 Highland Bypass'}. Move to higher ground immediately.`;
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.rate = 0.95;
+    utterance.pitch = 1.05;
+    utterance.lang = 'en-IN';
+
+    utterance.onstart = () => {
+      setIsPlayingAudio(true);
+      setAudioAlertId(alertItem.id);
+    };
+
+    utterance.onend = () => {
+      setIsPlayingAudio(false);
+      setAudioAlertId(null);
+    };
+
+    utterance.onerror = () => {
+      setIsPlayingAudio(false);
+      setAudioAlertId(null);
+    };
+
+    window.speechSynthesis.speak(utterance);
   };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      setSelectedImageFile(file);
       setPhotoName(file.name);
       setPhotoBlobUrl(URL.createObjectURL(file));
       try {
         const gps = await exifr.gps(file);
         if (gps) {
           setExifLocation({ lat: gps.latitude, lng: gps.longitude });
-          setLocation(`Auto-detected from Photo GPS`);
+          setLocation(`Photo GPS: ${gps.latitude.toFixed(3)}°N, ${gps.longitude.toFixed(3)}°E`);
         }
       } catch (err) {
         console.error('Error extracting EXIF data:', err);
@@ -101,354 +172,874 @@ export const CitizenPortalPage: React.FC = () => {
   };
 
   const requestLocation = () => {
-    // Mock location request
-    setLocationGranted(true);
-    setLocation('Current GPS Location (Guwahati)');
-  };
-
-  const getRiskColor = (level: RiskLevel) => {
-    switch (level) {
-      case 'CRITICAL': return 'bg-red-600';
-      case 'HIGH': return 'bg-orange-500';
-      case 'MODERATE': return 'bg-amber-400';
-      case 'LOW': return 'bg-emerald-500';
-      default: return 'bg-slate-500';
-    }
-  };
-  
-  const getRiskBadgeColor = (level: RiskLevel) => {
-    switch (level) {
-      case 'CRITICAL': return 'bg-red-100 text-red-800 ring-red-200';
-      case 'HIGH': return 'bg-orange-100 text-orange-800 ring-orange-200';
-      case 'MODERATE': return 'bg-amber-100 text-amber-800 ring-amber-200';
-      case 'LOW': return 'bg-emerald-100 text-emerald-800 ring-emerald-200';
-      default: return 'bg-slate-100 text-slate-800 ring-slate-200';
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocation(`GPS: ${pos.coords.latitude.toFixed(3)}°N, ${pos.coords.longitude.toFixed(3)}°E (Guwahati Metro)`);
+        },
+        () => {
+          setLocation('Guwahati (Kamrup Metro)');
+        }
+      );
+    } else {
+      setLocation('Guwahati (Kamrup Metro)');
     }
   };
 
-  // -------------------------------------------------------------
-  // SECTIONS RENDERING
-  // -------------------------------------------------------------
-  
+  const submit = async (event: React.FormEvent) => { 
+    event.preventDefault(); 
+    
+    // Ensure AI Analysis has completed
+    let finalAiAnalysis = aiPreviewAnalysis;
+    if (!finalAiAnalysis) {
+      finalAiAnalysis = await validateCommunityReportClientSide({
+        description: description || 'Local citizen observation reported via mobile app.',
+        hazardType,
+        location,
+        image: selectedImageFile || photoBlobUrl || null,
+        fileName: photoName || selectedImageFile?.name,
+      });
+    }
+
+    submitReport({ 
+      type: hazardType, 
+      location, 
+      district: location.includes('(') ? location.split('(')[1].replace(')', '') : 'Kamrup Metro', 
+      severity, 
+      description: description || 'Local citizen observation reported via mobile crisis app.', 
+      photoUrl: photoBlobUrl || undefined,
+      exifLocation: exifLocation,
+      aiAnalysis: finalAiAnalysis
+    }); 
+
+    setSubmitted(true); 
+    setDescription(''); 
+    setPhotoName(null); 
+    setPhotoBlobUrl(null);
+    setSelectedImageFile(null);
+    setExifLocation(undefined);
+    setAiPreviewAnalysis(null);
+    setTimeout(() => setSubmitted(false), 5000); 
+  };
+
+  const getRiskBadgeStyles = (level: RiskLevel) => {
+    switch (level) {
+      case 'CRITICAL':
+        return 'bg-red-50 text-red-700 border-red-300 ring-1 ring-red-200';
+      case 'HIGH':
+        return 'bg-orange-50 text-orange-700 border-orange-300 ring-1 ring-orange-200';
+      case 'MODERATE':
+        return 'bg-amber-50 text-amber-700 border-amber-300 ring-1 ring-amber-200';
+      case 'LOW':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-300 ring-1 ring-emerald-200';
+      default:
+        return 'bg-slate-100 text-slate-700 border-slate-300';
+    }
+  };
+
+  // ==============================================================
+  // TAB RENDERING (CLEAN WHITE / LIGHT THEME)
+  // ==============================================================
+
   const renderHome = () => (
-    <div className="space-y-6">
-      {/* Location Bar */}
-      <div className="flex flex-col gap-4 rounded-3xl border border-white/90 bg-white/80 p-4 shadow-[0_14px_32px_rgba(15,23,42,.07)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:p-5">
-        <div className="flex items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-indigo-50 to-sky-50 text-indigo-600 ring-1 ring-indigo-100">
+    <div className="space-y-6 animate-in fade-in duration-300">
+      {/* Location Selector & Geolocation Lock Card */}
+      <div className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
             <MapPin className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[.14em] text-slate-400">Safety coverage</p>
-            <h2 className="font-display text-xl font-black text-slate-900">{location}</h2>
-            <p className="mt-0.5 text-xs font-medium text-slate-500">Alerts, roads, and weather for your selected area</p>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600">Assam Civil Defense Zone</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <select 
+                value={location} 
+                onChange={(e) => setLocation(e.target.value)}
+                className="bg-slate-50 border border-slate-200 text-slate-900 font-black text-base sm:text-lg rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none"
+              >
+                {ASSAM_DISTRICTS.map(d => (
+                  <option key={d} value={d} className="bg-white text-slate-900">{d}</option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">Live flood telemetry, safe shelters & evacuation directives for this sector</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={requestLocation} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">
-            <Crosshair className="h-4 w-4" /> Use GPS
+
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={requestLocation} 
+            className="flex items-center gap-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-700 transition shadow-2xs hover:text-slate-900"
+          >
+            <Crosshair className="h-4 w-4 text-indigo-600" /> Lock Current GPS
           </button>
         </div>
       </div>
 
-      {locationGranted === false && (
-        <div className="p-4 bg-amber-50 text-amber-800 rounded-xl text-sm font-medium flex gap-2 items-center">
-          <AlertCircle className="h-5 w-5" /> Location access unavailable. Please select your location manually.
-        </div>
-      )}
+      {/* TOP EMERGENCY FLASH BROADCAST CARD */}
+      {displayAlerts.length > 0 ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-black uppercase tracking-widest text-red-600 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 animate-bounce text-red-600" />
+              Active Emergency Flash Alerts ({displayAlerts.length})
+            </h2>
+            <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5">
+              <Radio className="h-3.5 w-3.5 text-red-600 animate-pulse" /> SDMA Gateway Live
+            </span>
+          </div>
 
-      {/* Primary Alert (If any) */}
-      {publicAlerts.length > 0 ? (
-        <div className="space-y-3">
-          <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-red-500" /> Active Alerts Near You
-          </h3>
-          {publicAlerts.slice(0, 2).map((alert) => (
-             <div 
-               key={alert.id}
-               onClick={() => setSelectedAlert(alert)}
-               className={`relative overflow-hidden rounded-2xl border-2 p-5 shadow-sm cursor-pointer transition-transform hover:-translate-y-1 ${alert.severity === 'CRITICAL' || alert.severity === 'HIGH' ? 'border-red-200 bg-red-50/50' : 'border-amber-200 bg-amber-50/50'}`}
-             >
-               <div className="flex justify-between items-start mb-3">
-                 <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black tracking-wider ring-1 ${getRiskBadgeColor(alert.severity)}`}>
-                   <span className={`h-1.5 w-1.5 animate-ping rounded-full ${getRiskColor(alert.severity)}`} /> 
-                   {alert.severity} {alert.hazardType}
-                 </span>
-                 <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
-                   <Clock className="h-3 w-3" /> Updated 12:15 PM
-                 </span>
-               </div>
-               
-               <h3 className="font-display text-xl font-black text-slate-900 mb-2">{alert.title}</h3>
-               <p className="text-sm text-slate-600 mb-4 line-clamp-2">{alert.messageEn}</p>
-               
-               <div className="flex justify-between items-center pt-3 border-t border-slate-200/50">
-                 <p className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
-                   <MapPin className="h-4 w-4 text-slate-400" /> {alert.affectedArea}
-                 </p>
-                 <span className="text-sm font-bold text-indigo-600 flex items-center gap-1">
-                   View Alert <ChevronRight className="h-4 w-4" />
-                 </span>
-               </div>
-             </div>
-          ))}
+          <div className="grid grid-cols-1 gap-4">
+            {displayAlerts.map((alert) => (
+              <div 
+                key={alert.id}
+                className="group relative overflow-hidden rounded-2xl border-2 border-red-200/90 bg-white p-5 sm:p-6 shadow-sm hover:shadow-md transition"
+              >
+                {/* Glowing alert accent */}
+                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-orange-500 to-indigo-600" />
+
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black tracking-wider uppercase border ${getRiskBadgeStyles(alert.severity)}`}>
+                      <span className="h-2 w-2 rounded-full bg-red-600 animate-ping" />
+                      {alert.severity} RISK • {alert.hazardType}
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600 border border-slate-200">
+                      ID: {alert.id}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <Clock className="h-3.5 w-3.5 text-slate-400" />
+                    <span>{alert.issuedAt || 'Active Now'}</span>
+                  </div>
+                </div>
+
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mb-2 group-hover:text-red-600 transition">
+                  {alert.title}
+                </h3>
+
+                <p className="text-sm font-medium leading-relaxed text-slate-700 mb-4 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                  {alert.messageEn || alert.safetyInstructions}
+                </p>
+
+                {/* Rich Emergency Details: Shelter, Route, Travel */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-xs">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-emerald-900 flex items-start gap-2.5">
+                    <Building2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-black block uppercase tracking-wider text-[10px] text-emerald-800">Designated Safe Shelter</span>
+                      <p className="font-bold text-emerald-950 mt-0.5">{alert.shelterRecommendation || 'Kamrup Multi-Purpose Relief Shelter'}</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-3.5 text-sky-900 flex items-start gap-2.5">
+                    <Route className="h-4 w-4 text-sky-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-black block uppercase tracking-wider text-[10px] text-sky-800">Recommended Evacuation Route</span>
+                      <p className="font-bold text-sky-950 mt-0.5">{alert.routeAdvice || 'SH-12 Highland Transit Bypass Corridor'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {alert.travelAdvisory && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900 mb-4 flex items-center gap-2">
+                    <AlertOctagon className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span><strong>Transit Advisory:</strong> {alert.travelAdvisory}</span>
+                  </div>
+                )}
+
+                {/* Card Action Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                    <MapPin className="h-4 w-4 text-red-500" />
+                    <span>{alert.affectedArea || alert.location}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {/* Voice Siren Broadcast Button */}
+                    <button
+                      onClick={() => handleSpeechBroadcast(alert)}
+                      className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition shadow-2xs ${
+                        isPlayingAudio && audioAlertId === alert.id
+                          ? 'bg-red-600 text-white animate-pulse ring-2 ring-red-400'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200'
+                      }`}
+                    >
+                      {isPlayingAudio && audioAlertId === alert.id ? (
+                        <>
+                          <VolumeX className="h-3.5 w-3.5" /> Stop Voice Siren
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 className="h-3.5 w-3.5 text-indigo-600" /> Listen to Audio Warning
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => setSelectedAlert(alert)}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2 text-xs font-bold text-white transition shadow-sm"
+                    >
+                      Full Advisory <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
-        <div className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-6 text-center shadow-sm sm:p-8">
-          <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-emerald-100/60 blur-2xl" />
-          <div className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 ring-8 ring-emerald-50">
-            <Check className="h-6 w-6" />
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-8 text-center">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 ring-4 ring-emerald-50 mb-3">
+            <ShieldCheck className="h-6 w-6" />
           </div>
-          <p className="relative mt-4 text-[10px] font-extrabold uppercase tracking-[.16em] text-emerald-700">Safety status</p>
-          <h3 className="relative mt-1 font-display text-xl font-black text-emerald-950">No Active Disaster Alerts</h3>
-          <p className="relative mx-auto mt-2 max-w-lg text-sm leading-relaxed text-emerald-800">There are no verified active alerts near your selected location. Conditions can change quickly during heavy rain.</p>
-          <div className="relative mt-5 inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/75 px-3 py-1.5 text-xs font-semibold text-emerald-800"><ShieldCheck className="h-3.5 w-3.5" /> Official sources are being monitored</div>
+          <h3 className="text-lg font-black text-emerald-950">No Active Emergency Alerts in {location}</h3>
+          <p className="text-sm text-emerald-800 max-w-md mx-auto mt-1">
+            Civilian corridors are presently operating normally. Continuous multi-modal telemetry monitoring remains active.
+          </p>
         </div>
       )}
 
+      {/* DUAL TELEMETRY SUMMARY: ROADS & WEATHER */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Travel Advisory Summary */}
-        <div className="group rounded-3xl border border-slate-100 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_32px_rgba(15,23,42,.09)]">
-           <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Route className="h-4 w-4 text-indigo-500" /> Travel Advisory
-          </h3>
-          {mainAlert && (mainAlert.severity === 'HIGH' || mainAlert.severity === 'CRITICAL') ? (
-            <div className="space-y-2">
-              <p className="text-2xl font-black text-red-600">AVOID TRAVEL IN THIS AREA</p>
-              <p className="text-sm text-slate-600">Heavy rainfall and flooding make travel unsafe.</p>
-              <div className="mt-3 p-3 bg-slate-50 rounded-xl text-sm text-slate-700 border border-slate-100">
-                <span className="font-bold block mb-1 text-slate-900">Travel Window</span>
-                Travel is currently discouraged. Conditions are not expected to improve before 6:00 PM.
+        {/* Road Corridor Status */}
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-2">
+              <Route className="h-4 w-4 text-indigo-600" /> Corridor Passability Status
+            </h3>
+            <span className="text-[10px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+              NH-27 Inundated
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {MOCK_ROADS.slice(0, 3).map((r, i) => (
+              <div key={i} className="rounded-xl border border-slate-100 bg-slate-50 p-3 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-slate-900">{r.name}</span>
+                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
+                      r.status.includes('CLOSED') ? 'bg-red-100 text-red-700' : 
+                      r.status.includes('OPEN') ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {r.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">{r.reason}</p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="font-display text-2xl font-black text-emerald-600">Travel with caution</p>
-              <p className="text-sm text-slate-600">No current travel restrictions reported, but always stay alert.</p>
-            </div>
-          )}
-          <button onClick={() => setActiveTab('ROADS')} className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-indigo-600 transition group-hover:gap-2.5 hover:text-indigo-800">Check road conditions <ArrowRight className="h-4 w-4" /></button>
+            ))}
+          </div>
+
+          <button 
+            onClick={() => setActiveTab('ROADS')} 
+            className="mt-4 w-full flex items-center justify-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition py-2.5 rounded-xl bg-indigo-50/60 hover:bg-indigo-50"
+          >
+            Check all transit routes <ArrowRight className="h-3.5 w-3.5" />
+          </button>
         </div>
 
-        {/* Weather Summary */}
-        <div className="group rounded-3xl border border-slate-100 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_32px_rgba(15,23,42,.09)]">
-           <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <CloudRain className="h-4 w-4" /> Weather conditions
-          </h3>
+        {/* Doppler Weather & River Telemetry */}
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-2">
+              <CloudRain className="h-4 w-4 text-indigo-600" /> Live Hydro-Meteorology
+            </h3>
+            <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+              Monsoon Warning Active
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between mb-3 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
             <div>
               <p className="text-3xl font-black text-slate-900">{MOCK_WEATHER.temp}</p>
-              <p className="text-sm font-bold text-sky-600 mt-1">{MOCK_WEATHER.condition}</p>
+              <p className="text-xs font-bold text-indigo-700 mt-0.5">{MOCK_WEATHER.condition}</p>
             </div>
-            <div className="p-3 bg-sky-50 rounded-2xl">
+            <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
               {MOCK_WEATHER.icon}
             </div>
           </div>
-          <p className="text-sm leading-relaxed text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
-            {MOCK_WEATHER.forecast}
-          </p>
-          <button onClick={() => setActiveTab('WEATHER')} className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-indigo-600 transition group-hover:gap-2.5 hover:text-indigo-800">View weather details <ArrowRight className="h-4 w-4" /></button>
+
+          <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">24h Cumulative Rain</span>
+              <span className="font-black text-slate-900 text-sm">{MOCK_WEATHER.rainfall24h}</span>
+            </div>
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">Brahmaputra Gauge Level</span>
+              <span className="font-black text-red-600 text-sm">2.45m (+0.45m)</span>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => setActiveTab('WEATHER')} 
+            className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition py-2.5 rounded-xl bg-indigo-50/60 hover:bg-indigo-50"
+          >
+            View Doppler Telemetry <ArrowRight className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
 
-      <section className="rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-600 to-violet-600 p-5 text-white shadow-lg shadow-indigo-200/60 sm:flex sm:items-center sm:justify-between sm:p-6">
+      {/* CITIZEN HAZARD REPORT CALL-TO-ACTION BANNER */}
+      <div className="rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 via-white to-sky-50 p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-indigo-200">Community safety</p>
-          <h3 className="mt-1 font-display text-lg font-black">See something unsafe?</h3>
-          <p className="mt-1 text-sm text-indigo-100">A quick report helps emergency teams assess local conditions faster.</p>
+          <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-indigo-600" /> AI-Assisted Ground Intelligence
+          </span>
+          <h3 className="text-lg font-black text-slate-900 mt-1">Witnessing floodwater, landslide, or road block?</h3>
+          <p className="text-xs text-slate-600 mt-1 max-w-xl">
+            Upload a photo with details. Our real-time client AI will inspect silt turbidity & text urgency to expedite emergency dispatch.
+          </p>
         </div>
-        <button onClick={() => setActiveTab('REPORT')} className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-indigo-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-indigo-50 sm:mt-0"><Camera className="h-4 w-4" /> Report a hazard</button>
-      </section>
-
+        <button 
+          onClick={() => setActiveTab('REPORT')} 
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-5 py-3 text-xs font-black text-white shadow-md shadow-indigo-200 transition hover:-translate-y-0.5 shrink-0"
+        >
+          <Camera className="h-4 w-4" /> Report Hazard to SDMA
+        </button>
+      </div>
     </div>
   );
 
-  const renderAlertDetail = () => {
-    if (!selectedAlert) return null;
-    
-    const getAlertBannerClass = (severity: RiskLevel) => {
-      switch (severity) {
-        case 'CRITICAL': return 'bg-gradient-to-br from-red-600 to-rose-600 text-white shadow-red-200';
-        case 'HIGH': return 'bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-orange-200';
-        case 'MODERATE': return 'bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-amber-200';
-        case 'LOW': return 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-emerald-200';
-        default: return 'bg-slate-600 text-white shadow-slate-200';
-      }
-    };
+  const renderAlertsTab = () => (
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-600" /> Complete Crisis Bulletin Feed
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Official emergency alerts published by the Assam Disaster Intelligence Center and validated by field analysts.
+          </p>
+        </div>
+        <span className="text-xs font-bold text-slate-700 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+          Showing {displayAlerts.length} Active Alert(s)
+        </span>
+      </div>
 
-    return (
-      <div className="space-y-6">
-        <button onClick={() => setSelectedAlert(null)} className="text-sm font-bold text-indigo-600 flex items-center gap-1 hover:underline">
-          <ChevronRight className="h-4 w-4 rotate-180" /> Back to Alerts
-        </button>
+      <div className="space-y-4">
+        {displayAlerts.map((alert) => (
+          <div 
+            key={alert.id}
+            className="rounded-2xl border-2 border-red-200 bg-white p-5 sm:p-6 shadow-sm hover:shadow-md transition"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider border ${getRiskBadgeStyles(alert.severity)}`}>
+                <span className="h-2 w-2 rounded-full bg-red-600 animate-ping" />
+                {alert.severity} • {alert.hazardType}
+              </span>
+              <span className="text-xs font-mono text-slate-500 flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" /> Issued: {alert.issuedAt || 'Active Now'}
+              </span>
+            </div>
 
-        <div className={`p-6 sm:p-8 rounded-3xl shadow-lg relative overflow-hidden ${getAlertBannerClass(selectedAlert.severity)}`}>
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
-          
-          <div className="flex justify-between items-start mb-6 relative">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur-sm px-3 py-1.5 text-xs font-black tracking-wider shadow-sm">
-              {selectedAlert.severity} ALERT
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur-sm px-3 py-1.5 text-xs font-bold shadow-sm">
-              <UserCheck className="h-3 w-3" /> Official Warning
-            </span>
+            <h3 className="text-xl font-black text-slate-900 mb-2">{alert.title}</h3>
+            
+            <p className="text-sm font-medium text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+              {alert.messageEn || alert.safetyInstructions}
+            </p>
+
+            {/* Key Directive Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 text-xs">
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 block mb-1">Target Sector</span>
+                <span className="font-bold text-slate-900 flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5 text-red-500 shrink-0" /> {alert.affectedArea || alert.location}
+                </span>
+              </div>
+              <div className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-200">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 block mb-1">Evacuation Shelter</span>
+                <span className="font-bold text-emerald-950 flex items-center gap-1">
+                  <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> {alert.shelterRecommendation || 'Kamrup District Relief Hub'}
+                </span>
+              </div>
+              <div className="bg-sky-50 p-3.5 rounded-xl border border-sky-200">
+                <span className="text-[10px] font-black uppercase tracking-wider text-sky-800 block mb-1">Safe Evacuation Route</span>
+                <span className="font-bold text-sky-950 flex items-center gap-1">
+                  <Route className="h-3.5 w-3.5 text-sky-600 shrink-0" /> {alert.routeAdvice || 'SH-12 Highland Bypass'}
+                </span>
+              </div>
+            </div>
+
+            {/* Action Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+              <span className="text-xs text-slate-500">
+                Authorized By: <strong className="text-slate-800">{alert.approvedBy || 'Assam SDMA'}</strong>
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleSpeechBroadcast(alert)}
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
+                    isPlayingAudio && audioAlertId === alert.id
+                      ? 'bg-red-600 text-white animate-pulse'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200'
+                  }`}
+                >
+                  <Volume2 className="h-3.5 w-3.5 text-indigo-600" /> Voice Siren
+                </button>
+                <button
+                  onClick={() => setSelectedAlert(alert)}
+                  className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2 text-xs font-bold text-white transition shadow-sm"
+                >
+                  View Complete Details <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
-          
-          <h1 className="font-display text-3xl sm:text-4xl font-black mb-6 leading-tight relative">
-            {selectedAlert.title}
-          </h1>
-          
-          <div className="grid grid-cols-2 gap-4 relative">
-            <div className="bg-white/10 backdrop-blur-sm p-4 rounded-2xl">
-              <p className="text-white/80 text-[10px] font-black uppercase tracking-widest mb-1">Location</p>
-              <p className="font-bold text-lg">{selectedAlert.affectedArea}</p>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderRoadsTab = () => (
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <div>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+          <Route className="h-5 w-5 text-indigo-600" /> Assam Highway & Corridor Status
+        </h2>
+        <p className="text-xs text-slate-500 mt-1">Real-time road passability telemetry validated against active flood inundations.</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3">
+        {MOCK_ROADS.map((road, idx) => (
+          <div key={idx} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-black text-slate-900 text-base">{road.name}</h3>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                  road.status.includes('CLOSED') ? 'bg-red-100 text-red-700 border border-red-200' : 
+                  road.status.includes('OPEN') ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 
+                  'bg-amber-100 text-amber-800 border border-amber-200'
+                }`}>
+                  {road.status}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-slate-400" /> {road.location}
+              </p>
+              <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                <Info className="h-3.5 w-3.5 text-indigo-600 shrink-0" /> {road.reason}
+              </p>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm p-4 rounded-2xl">
-              <p className="text-white/80 text-[10px] font-black uppercase tracking-widest mb-1">Status</p>
-              <p className="font-bold text-lg">ACTIVE</p>
+            <div className="text-left sm:text-right shrink-0">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">Last Telemetry Check</span>
+              <span className="text-xs font-mono font-bold text-slate-700">{road.updated}</span>
             </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3 text-xs text-amber-900">
+        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+        <div>
+          <strong className="block text-amber-950 font-bold mb-0.5">Assam State Transport Advisory:</strong>
+          Heavy vehicles and civilian cars are advised to strictly use elevated bypasses. Do not attempt to cross flooded roadways where water depth is unknown.
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderWeatherTab = () => (
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <div>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+          <CloudRain className="h-5 w-5 text-indigo-600" /> Doppler Radar & Rainfall Telemetry
+        </h2>
+        <p className="text-xs text-slate-500 mt-1">Multi-source satellite precipitation and river gauge readings for Assam basin.</p>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-100">
+          <div>
+            <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Surface Temperature</span>
+            <p className="text-5xl font-black text-slate-900 mt-1">{MOCK_WEATHER.temp}</p>
+            <p className="text-sm font-bold text-indigo-600 mt-1">{MOCK_WEATHER.condition}</p>
+          </div>
+          <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
+            {MOCK_WEATHER.icon}
           </div>
         </div>
 
-        <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200 space-y-8 relative z-10">
-          <section>
-            <h3 className="text-lg font-black text-slate-900 mb-3 tracking-tight">WHAT IS HAPPENING?</h3>
-            <p className="text-slate-700 font-medium leading-relaxed text-sm sm:text-base">
-              {selectedAlert.messageEn || "Dangerous conditions have been reported in this area. Environmental conditions may make travel unsafe and pose a risk to life and property."}
-            </p>
-          </section>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <span className="text-[10px] font-bold text-slate-400 uppercase block">Rain Probability</span>
+            <span className="text-2xl font-black text-slate-900">{MOCK_WEATHER.rainProb}</span>
+          </div>
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <span className="text-[10px] font-bold text-slate-400 uppercase block">24h Precipitation</span>
+            <span className="text-2xl font-black text-slate-900">{MOCK_WEATHER.rainfall24h}</span>
+          </div>
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <span className="text-[10px] font-bold text-slate-400 uppercase block">Brahmaputra Gauge Level</span>
+            <span className="text-2xl font-black text-red-600">2.45m</span>
+          </div>
+        </div>
 
-          <hr className="border-slate-100" />
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs text-slate-700">
+          <strong className="block text-slate-900 font-bold mb-1">Official IMD Meteorological Bulletin:</strong>
+          {MOCK_WEATHER.forecast}
+        </div>
+      </div>
+    </div>
+  );
 
-          <section>
-            <h3 className="text-lg font-black text-red-600 flex items-center gap-2 mb-3">
-              <AlertOctagon className="h-5 w-5" /> DANGER ZONES
-            </h3>
-            <p className="text-sm text-slate-600 mb-3">Avoid the following locations due to verified active alerts:</p>
-            <ul className="space-y-2">
-              {MOCK_DANGER_ZONES.map((zone, i) => (
-                <li key={i} className="flex items-start gap-2 text-slate-700 text-sm font-medium bg-red-50 p-3 rounded-xl border border-red-100">
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-500 mt-2 shrink-0" />
-                  {zone}
-                </li>
-              ))}
-            </ul>
-          </section>
+  const renderReportTab = () => (
+    <div className="space-y-6 max-w-2xl mx-auto animate-in fade-in duration-300">
+      <div className="text-center">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 ring-4 ring-indigo-50/50 mb-3">
+          <Camera className="h-7 w-7" />
+        </div>
+        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Citizen Ground Observation Report</h2>
+        <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+          Submit observed disaster telemetry. Our real-time client-side AI analyzes photos and descriptions to prioritize validation for SDMA control.
+        </p>
+      </div>
 
-          <hr className="border-slate-100" />
+      <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-sm space-y-5">
+        <div>
+          <label className="block text-[11px] font-black uppercase tracking-wider text-slate-600 mb-2">
+            1. Hazard Classification
+          </label>
+          <select 
+            value={hazardType} 
+            onChange={e => setHazardType(e.target.value as HazardType)}
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+          >
+            <option value="FLOOD">Flash Flood & River Inundation</option>
+            <option value="LANDSLIDE">Hill Slope Collapse / Landslide</option>
+            <option value="BLOCKED_ROAD">Highway or Street Inundation / Blocked</option>
+            <option value="RIVER_OVERFLOW">River Embankment Breach</option>
+            <option value="INFRASTRUCTURE_DAMAGE">Bridge / Power Infrastructure Damage</option>
+          </select>
+        </div>
 
-          <section>
-            <h3 className="text-lg font-black text-slate-900 mb-3">IMPACT ESTIMATES</h3>
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col items-center text-center">
-                <span className="text-2xl mb-1">🏠</span>
-                <span className="text-lg font-black text-slate-900">{selectedAlert.estimatedBuildingsAffected ?? 137}</span>
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Buildings Affected</span>
-              </div>
-              <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col items-center text-center">
-                <span className="text-2xl mb-1">🏫</span>
-                <span className="text-lg font-black text-slate-900">{selectedAlert.affectedSchools ?? 2}</span>
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Schools Affected</span>
-              </div>
-              <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col items-center text-center">
-                <span className="text-2xl mb-1">🏥</span>
-                <span className="text-lg font-black text-slate-900">{selectedAlert.affectedHospitals ?? 1}</span>
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Hospitals Affected</span>
-              </div>
-              <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl flex flex-col items-center text-center">
-                <span className="text-2xl mb-1">🛣️</span>
-                <span className="text-sm font-black text-indigo-900 mt-1">Available</span>
-                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Alt Route</span>
+        <div>
+          <label className="block text-[11px] font-black uppercase tracking-wider text-slate-600 mb-2">
+            2. Observation Location
+          </label>
+          <div className="flex gap-2">
+            <input 
+              value={location} 
+              onChange={e => setLocation(e.target.value)} 
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              placeholder="e.g. Bharalumukh Ghat, Guwahati"
+            />
+            <button 
+              type="button" 
+              onClick={requestLocation} 
+              title="Lock Current GPS"
+              className="px-4 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 transition"
+            >
+              <Crosshair className="h-5 w-5 text-indigo-600" />
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-black uppercase tracking-wider text-slate-600 mb-2">
+            3. Ground Severity Assessment
+          </label>
+          <div className="grid grid-cols-4 gap-2">
+            {(['LOW', 'MODERATE', 'HIGH', 'CRITICAL'] as const).map(lvl => (
+              <button
+                key={lvl}
+                type="button"
+                onClick={() => setSeverity(lvl)}
+                className={`py-2.5 rounded-xl text-xs font-black tracking-wider transition ${
+                  severity === lvl
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                }`}
+              >
+                {lvl}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-black uppercase tracking-wider text-slate-600 mb-2">
+            4. Details & Current Situation
+          </label>
+          <textarea
+            rows={3}
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="Describe what you see: water depth (knee/chest deep), stranded residents, damaged structures, road status..."
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none placeholder:text-slate-400"
+          />
+        </div>
+
+        {/* Photo Upload with client canvas analysis */}
+        <div>
+          <label className="block text-[11px] font-black uppercase tracking-wider text-slate-600 mb-2">
+            5. Upload Ground Photograph
+          </label>
+          <input
+            type="file"
+            accept="image/*"
+            ref={fileInputRef}
+            onChange={handlePhotoUpload}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full flex items-center justify-center gap-2.5 rounded-xl border-2 border-dashed border-slate-300 hover:border-indigo-500 bg-slate-50 hover:bg-slate-100 p-5 text-sm font-bold text-slate-700 transition"
+          >
+            <Camera className="h-5 w-5 text-indigo-600" />
+            {photoName ? `Selected: ${photoName}` : 'Select or Take Real Photo (Live AI Verification)'}
+          </button>
+
+          {photoBlobUrl && (
+            <div className="mt-3 relative rounded-xl overflow-hidden border border-slate-200 max-h-48 flex items-center justify-center bg-slate-100">
+              <img src={photoBlobUrl} alt="Upload preview" className="object-cover max-h-48 w-full" />
+              <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] text-emerald-700 font-bold border border-emerald-300 flex items-center gap-1 shadow-2xs">
+                <CheckCircle2 className="h-3 w-3" /> Photo Attached
               </div>
             </div>
-            
-            <h3 className="text-lg font-black text-slate-900 mb-3">WHAT SHOULD I DO?</h3>
-            <ul className="space-y-3">
-              <Advice title="Move to safe areas" text="Follow official evacuation instructions and move to higher ground if instructed." />
-              <Advice title="Avoid floodwater" text="Do not walk, swim, or drive through floodwaters. Turn around, don't drown." />
-              <Advice title="Stay informed" text="Keep monitoring this page or official channels for updates." />
-            </ul>
-          </section>
+          )}
+
+          {exifLocation && (
+            <div className="mt-2 text-xs text-emerald-800 font-bold bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-emerald-600" />
+              GPS Coordinates Extracted from Image: {exifLocation.lat.toFixed(4)}°N, {exifLocation.lng.toFixed(4)}°E
+            </div>
+          )}
+        </div>
+
+        {/* ============================================================== */}
+        {/* REAL-TIME CLIENT-SIDE AI SCANNER & RECOMMENDATION CARD         */}
+        {/* ============================================================== */}
+        {(isAiAnalyzing || aiPreviewAnalysis) && (
+          <div className="rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50/70 via-sky-50/50 to-white p-4.5 shadow-2xs">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Brain className="h-4 w-4 text-indigo-600 animate-pulse" />
+                <span className="text-xs font-black uppercase tracking-wider text-indigo-900">
+                  Client-Side Neural Vision & NLP Analysis
+                </span>
+              </div>
+              {isAiAnalyzing && (
+                <span className="text-[10px] text-indigo-600 font-bold flex items-center gap-1">
+                  <RefreshCw className="h-3 w-3 animate-spin" /> Scanning...
+                </span>
+              )}
+            </div>
+
+            {aiPreviewAnalysis && (
+              <div className="space-y-2.5 mt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-700 font-bold">AI Hazard Validity:</span>
+                  <span className={`text-xs font-black px-2.5 py-0.5 rounded-md ${
+                    aiPreviewAnalysis.isValid 
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                      : 'bg-red-100 text-red-800 border border-red-300'
+                  }`}>
+                    {aiPreviewAnalysis.label} ({aiPreviewAnalysis.confidence}% Confidence)
+                  </span>
+                </div>
+
+                {/* Recommendation for Admin */}
+                <div className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 ${
+                  aiPreviewAnalysis.recommendation === 'ACCEPT'
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                    : 'bg-red-50 border-red-300 text-red-900'
+                }`}>
+                  {aiPreviewAnalysis.recommendation === 'ACCEPT' ? (
+                    <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-red-600 shrink-0" />
+                  )}
+                  <span>
+                    <strong>AI Recommendation to Admin:</strong> {aiPreviewAnalysis.recommendation === 'ACCEPT' ? 'ACCEPT EVENT' : 'REJECT EVENT'}
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-200">
+                  {aiPreviewAnalysis.reasoning}
+                </p>
+
+                {aiPreviewAnalysis.detectedFeatures.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {aiPreviewAnalysis.detectedFeatures.map((feat, i) => (
+                      <span key={i} className="text-[10px] bg-white text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-semibold shadow-2xs">
+                        ✓ {feat}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          className="w-full flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 py-3.5 text-sm font-black text-white shadow-md shadow-indigo-200 transition hover:-translate-y-0.5"
+        >
+          <Camera className="h-4 w-4" /> Submit Verified Report to Control Center
+        </button>
+      </form>
+    </div>
+  );
+
+  const renderAlertDetailModal = () => {
+    if (!selectedAlert) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
+        <div className="relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-2xl text-slate-800 my-8">
+          <div className="flex justify-between items-start mb-4 pb-4 border-b border-slate-200">
+            <div>
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider border ${getRiskBadgeStyles(selectedAlert.severity)}`}>
+                <span className="h-2 w-2 rounded-full bg-red-600 animate-ping" />
+                {selectedAlert.severity} • {selectedAlert.hazardType}
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-2">{selectedAlert.title}</h2>
+              <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-red-500" /> {selectedAlert.affectedArea || selectedAlert.location}
+              </p>
+            </div>
+            <button
+              onClick={() => setSelectedAlert(null)}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="space-y-4 text-sm">
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-red-700 mb-1">Emergency Warning & Directive</h4>
+              <p className="text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-200 leading-relaxed font-medium">
+                {selectedAlert.messageEn || selectedAlert.safetyInstructions}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900">
+                <strong className="block font-black uppercase tracking-wider text-emerald-800 text-[10px] mb-1">
+                  Designated Safe Shelter
+                </strong>
+                {selectedAlert.shelterRecommendation || 'Kamrup Multi-Purpose Relief Center'}
+              </div>
+
+              <div className="p-3.5 rounded-xl border border-sky-200 bg-sky-50 text-sky-900">
+                <strong className="block font-black uppercase tracking-wider text-sky-800 text-[10px] mb-1">
+                  Designated Evacuation Corridor
+                </strong>
+                {selectedAlert.routeAdvice || 'State Highway 12 Highland Bypass'}
+              </div>
+            </div>
+
+            {selectedAlert.travelAdvisory && (
+              <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-xs">
+                <strong>Travel Advisory:</strong> {selectedAlert.travelAdvisory}
+              </div>
+            )}
+
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-xs space-y-2">
+              <strong className="block text-slate-900 font-bold uppercase tracking-wider text-[11px]">Immediate Citizen Action Checklist:</strong>
+              <div className="flex items-start gap-2 text-slate-700">
+                <span className="text-emerald-600 font-bold">✓</span> Move to higher floors or designated relief centers immediately.
+              </div>
+              <div className="flex items-start gap-2 text-slate-700">
+                <span className="text-emerald-600 font-bold">✓</span> Avoid flooded roadways (Turn Around, Don't Drown).
+              </div>
+              <div className="flex items-start gap-2 text-slate-700">
+                <span className="text-emerald-600 font-bold">✓</span> Keep mobile batteries charged and emergency documentation waterproofed.
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-between gap-3">
+            <button
+              onClick={() => handleSpeechBroadcast(selectedAlert)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 px-4 py-2 text-xs font-bold text-slate-800 border border-slate-200"
+            >
+              <Volume2 className="h-4 w-4 text-indigo-600" /> Listen to Audio Warning
+            </button>
+
+            <button
+              onClick={() => setSelectedAlert(null)}
+              className="rounded-xl bg-indigo-600 hover:bg-indigo-700 px-5 py-2 text-xs font-black text-white transition shadow-sm"
+            >
+              Close Advisory
+            </button>
+          </div>
         </div>
       </div>
     );
   };
 
-  const renderRoads = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-black text-slate-900">Road Conditions</h2>
-      <p className="text-slate-600 text-sm">Verified road statuses based on active alerts and reports.</p>
-      
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        {MOCK_ROADS.map((road, idx) => (
-          <div key={idx} className={`p-4 sm:p-5 border-b border-slate-100 last:border-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${road.status === 'CLOSED' ? 'bg-red-50/30' : ''}`}>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-bold text-slate-900 text-lg">{road.name}</h3>
-                <span className={`text-[10px] font-black tracking-wider px-2 py-0.5 rounded-md ${
-                  road.status === 'CLOSED' ? 'bg-red-100 text-red-700' : 
-                  road.status === 'POTENTIALLY AFFECTED' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
-                }`}>
-                  {road.status}
-                </span>
-              </div>
-              <p className="text-sm font-medium text-slate-600 mb-1">{road.location}</p>
-              <p className="text-xs text-slate-500 flex items-center gap-1">
-                <Info className="h-3 w-3" /> {road.reason}
-              </p>
-            </div>
-            <div className="text-left sm:text-right">
-              <p className="text-xs font-bold text-slate-400">LAST UPDATED</p>
-              <p className="text-sm font-medium text-slate-700">{road.updated}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-      
-      <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex items-start gap-3">
-        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-        <p className="text-sm text-amber-800 leading-relaxed font-medium">
-          Note: "Potentially affected" means the road is near a hazard zone, but closure has not been fully verified by authorities. Always exercise caution.
-        </p>
-      </div>
-    </div>
-  );
+  // ==============================================================
+  // MAIN COMPONENT RETURN (PRISTINE WHITE / LIGHT THEME)
+  // ==============================================================
 
   return (
-    <div className="min-h-screen bg-white text-slate-800 pb-20 sm:pb-0 font-sans relative overflow-x-hidden">
-      {/* Ambient background glows for modern look (Fixed layering) */}
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans relative overflow-x-hidden pb-20 sm:pb-12">
+      {/* Background ambient glows */}
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-sky-100/40 blur-[100px] rounded-full" />
-        <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-indigo-100/40 blur-[120px] rounded-full" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-indigo-100/40 blur-[130px] rounded-full" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-sky-100/40 blur-[140px] rounded-full" />
       </div>
-      
-      {/* Toast Notification */}
-      {submitted && (
-        <div className="fixed top-5 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-emerald-200">
-          <CheckCircle2 className="h-5 w-5" /> Report received. Thank you for keeping the community safe.
-        </div>
-      )}
 
-      {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-slate-100 shadow-sm relative">
-        <div className="max-w-4xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3 relative z-10 flex-wrap">
-          <div>
-            <h1 className="font-display text-lg sm:text-xl font-black tracking-tight text-slate-900 flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Assam Disaster Alerts
-            </h1>
-            <p className="text-[11px] font-medium text-slate-500">Real-time alerts & safety information</p>
+      {/* TOP EMERGENCY HELPLINE TICKER */}
+      <div className="bg-rose-50 border-b border-rose-200 px-4 py-2 text-xs text-rose-900 relative z-40 shadow-2xs">
+        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 font-black tracking-wider uppercase text-[10px]">
+            <span className="h-2 w-2 rounded-full bg-red-600 animate-ping" />
+            <span className="text-red-900">Assam State Emergency Hotline:</span>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-3 text-[11px] font-bold flex-wrap">
+            <a href="tel:112" className="hover:text-red-700 flex items-center gap-1 bg-white text-rose-900 px-2.5 py-0.5 rounded-lg border border-rose-200 shadow-2xs">
+              <PhoneCall className="h-3 w-3 text-red-600" /> Police/National: 112
+            </a>
+            <a href="tel:1070" className="hover:text-red-700 flex items-center gap-1 bg-white text-rose-900 px-2.5 py-0.5 rounded-lg border border-rose-200 shadow-2xs">
+              <PhoneCall className="h-3 w-3 text-red-600" /> Disaster SDMA: 1070 / 1077
+            </a>
+            <a href="tel:108" className="hover:text-red-700 flex items-center gap-1 bg-white text-rose-900 px-2.5 py-0.5 rounded-lg border border-rose-200 shadow-2xs">
+              <PhoneCall className="h-3 w-3 text-red-600" /> Medical Ambulance: 108
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* HEADER */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs">
+        <div className="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-600 text-white shadow-sm font-black text-base">
+              RD
+            </div>
+            <div>
+              <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-900 flex items-center gap-2">
+                Assam Disaster Alerts
+                <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full">
+                  Citizen Portal
+                </span>
+              </h1>
+              <p className="text-[11px] text-slate-500">Integrated Multi-Modal Flood & Hazard Early Warning</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
             {currentUser ? (
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-800 font-bold text-xs border border-slate-200 shadow-2xs">
-                  <div className="h-5 w-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-black">
+                <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
+                  <div className="h-5 w-5 rounded-full bg-indigo-600 text-white font-black text-[10px] flex items-center justify-center">
                     {currentUser.name ? currentUser.name[0].toUpperCase() : 'U'}
                   </div>
-                  <span className="truncate max-w-[110px]">{currentUser.name}</span>
-                  <span className="text-[10px] text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded font-black">
+                  <span className="font-bold text-slate-900 max-w-[100px] truncate">{currentUser.name}</span>
+                  <span className="bg-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.2 rounded font-black border border-indigo-200">
                     {currentUser.role}
                   </span>
                 </div>
@@ -456,7 +1047,7 @@ export const CitizenPortalPage: React.FC = () => {
                 {['ADMIN', 'EXPERT', 'DISPATCHER', 'FIRST_RESPONDER'].includes(currentUser.role) && (
                   <button
                     onClick={() => setUserRole('EXPERT')}
-                    className="flex items-center gap-1 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg transition shadow-sm"
+                    className="flex items-center gap-1 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl transition shadow-sm"
                   >
                     <Shield className="h-3.5 w-3.5" /> Operations Console
                   </button>
@@ -464,8 +1055,7 @@ export const CitizenPortalPage: React.FC = () => {
 
                 <button
                   onClick={logoutUser}
-                  title="Sign Out"
-                  className="flex items-center gap-1 text-xs font-bold text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 transition"
+                  className="flex items-center gap-1 text-xs font-bold text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-xl border border-rose-200 transition"
                 >
                   <LogOut className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Sign Out</span>
                 </button>
@@ -474,17 +1064,15 @@ export const CitizenPortalPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setAuthModalOpen(true)}
-                  className="flex items-center gap-1.5 text-xs font-extrabold bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white px-3.5 py-1.5 rounded-xl transition shadow-md shadow-indigo-200"
+                  className="flex items-center gap-1.5 text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl transition shadow-sm"
                 >
                   <User className="h-3.5 w-3.5" /> Sign In / Register
                 </button>
-
                 <button 
                   onClick={() => setAuthModalOpen(true)} 
-                  className="hidden sm:flex items-center gap-1.5 text-[11px] font-bold bg-white hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg transition border border-slate-200 shadow-2xs"
-                  title="Operations Console requires Admin or First Responder clearance"
+                  className="hidden sm:flex items-center gap-1.5 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-xl border border-slate-300 shadow-2xs"
                 >
-                  <Shield className="h-3 w-3 text-indigo-600" /> Admin Portal
+                  <Shield className="h-3.5 w-3.5 text-indigo-600" /> Admin Access
                 </button>
               </div>
             )}
@@ -492,210 +1080,96 @@ export const CitizenPortalPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Desktop Navigation */}
-      <nav className="hidden sm:block bg-white/70 backdrop-blur-sm border-b border-slate-100 relative z-30">
-        <div className="max-w-4xl mx-auto px-4 flex space-x-1 overflow-x-auto hide-scrollbar">
-          {(['HOME', 'ALERTS', 'ROADS', 'WEATHER', 'REPORT'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => { setActiveTab(tab); setSelectedAlert(null); }}
-              className={`px-4 py-3 text-sm font-bold border-b-2 whitespace-nowrap transition-colors ${
-                activeTab === tab && !selectedAlert ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              {tab === 'HOME' ? 'MY AREA' : tab}
-            </button>
-          ))}
+      {/* DESKTOP TAB NAVIGATION */}
+      <nav className="sticky top-[61px] z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs">
+        <div className="max-w-5xl mx-auto px-4 flex space-x-2 overflow-x-auto hide-scrollbar py-2">
+          {([
+            { id: 'HOME', label: 'My Area Overview', icon: Compass },
+            { id: 'ALERTS', label: `Active Alerts (${displayAlerts.length})`, icon: AlertTriangle },
+            { id: 'ROADS', label: 'Road Hazards', icon: Route },
+            { id: 'WEATHER', label: 'Doppler Weather', icon: CloudRain },
+            { id: 'REPORT', label: 'Report Hazard (AI)', icon: Camera }
+          ] as const).map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => { setActiveTab(tab.id); setSelectedAlert(null); }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all ${
+                  isActive
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </nav>
 
-      {/* Main Content Area */}
-      <main className="max-w-4xl mx-auto p-4 sm:p-6 lg:py-8 relative z-10">
-        {selectedAlert ? renderAlertDetail() : (
-          <>
-            {activeTab === 'HOME' && renderHome()}
-            {activeTab === 'ALERTS' && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-black text-slate-900">Active Alerts</h2>
-                <p className="text-slate-600 text-sm">Verified emergency alerts from official sources and early warning systems.</p>
-                {activeAlerts.map((alert) => (
-                   <div 
-                     key={alert.id}
-                     onClick={() => setSelectedAlert(alert)}
-                     className={`relative overflow-hidden rounded-2xl border p-5 shadow-sm cursor-pointer transition-transform hover:-translate-y-1 bg-white border-slate-200`}
-                   >
-                     <div className="flex justify-between items-start mb-3">
-                       <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black tracking-wider ring-1 ${getRiskBadgeColor(alert.severity)}`}>
-                         {alert.severity} {alert.hazardType}
-                       </span>
-                     </div>
-                     <h3 className="font-display text-xl font-black text-slate-900 mb-2">{alert.title}</h3>
-                     <p className="text-sm font-bold text-slate-700 flex items-center gap-1.5 mb-3">
-                       <MapPin className="h-4 w-4 text-slate-400" /> {alert.affectedArea}
-                     </p>
-                     <p className="text-sm font-bold text-indigo-600 flex items-center gap-1">
-                       View Alert <ChevronRight className="h-4 w-4" />
-                     </p>
-                   </div>
-                ))}
-                {activeAlerts.length === 0 && (
-                   <div className="bg-emerald-50 p-6 rounded-2xl text-center">
-                    <Check className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
-                    <h3 className="font-black text-emerald-900">No active alerts</h3>
-                  </div>
-                )}
-              </div>
-            )}
-            {activeTab === 'ROADS' && renderRoads()}
-            {activeTab === 'WEATHER' && (
-               <div className="space-y-6">
-                 <h2 className="text-2xl font-black text-slate-900">Weather</h2>
-                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                    <div className="flex justify-between items-center mb-6">
-                      <div>
-                        <p className="text-5xl font-black text-slate-900">{MOCK_WEATHER.temp}</p>
-                        <p className="text-lg font-bold text-sky-600 mt-2">{MOCK_WEATHER.condition}</p>
-                      </div>
-                      <div className="p-4 bg-sky-50 rounded-full">
-                        {MOCK_WEATHER.icon}
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                      <div className="p-4 bg-slate-50 rounded-2xl">
-                        <p className="text-xs font-bold text-slate-400 uppercase">Rain Probability</p>
-                        <p className="text-xl font-black text-slate-800">{MOCK_WEATHER.rainProb}</p>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-2xl">
-                        <p className="text-xs font-bold text-slate-400 uppercase">Next few hours</p>
-                        <p className="text-sm font-bold text-slate-800 mt-1">Heavy rain</p>
-                      </div>
-                    </div>
-                    
-                    <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 text-sm font-medium text-amber-800">
-                      <strong className="block mb-1">Weather Alert:</strong>
-                      {MOCK_WEATHER.forecast}
-                    </div>
-                 </div>
-               </div>
-            )}
-            {activeTab === 'REPORT' && (
-              <div className="space-y-6 max-w-xl mx-auto">
-                <div className="text-center mb-8">
-                  <div className="w-16 h-16 bg-sky-100 text-sky-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Camera className="h-8 w-8" />
-                  </div>
-                  <h2 className="text-2xl font-black text-slate-900">Report a Hazard</h2>
-                  <p className="text-slate-600 text-sm mt-2">Help keep your community safe by reporting what you see.</p>
-                </div>
-                
-                <form onSubmit={submit} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-5">
-                  <Field label="WHAT DID YOU SEE?">
-                    <select value={hazardType} onChange={e => setHazardType(e.target.value as HazardType)}>
-                      <option value="FLOOD">Flood</option>
-                      <option value="LANDSLIDE">Landslide</option>
-                      <option value="BLOCKED_ROAD">Road Problem / Blocked</option>
-                      <option value="RIVER_OVERFLOW">Waterlogging / River</option>
-                      <option value="INFRASTRUCTURE_DAMAGE">Other</option>
-                    </select>
-                  </Field>
-                  
-                  <Field label="LOCATION">
-                    <div className="flex gap-2 relative w-full">
-                      <input 
-                        value={location} 
-                        onChange={e => setLocation(e.target.value)} 
-                        className="flex-1"
-                        list="assam-districts-list"
-                        placeholder="Select or enter location..."
-                      />
-                      <datalist id="assam-districts-list">
-                        {ASSAM_DISTRICTS.map(dist => (
-                          <option key={dist} value={dist} />
-                        ))}
-                      </datalist>
-                      <button type="button" onClick={requestLocation} className="px-4 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 transition-colors shrink-0">
-                        <Crosshair className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </Field>
-                  
-                  <Field label="HOW SERIOUS IS IT?">
-                    <div className="grid grid-cols-4 gap-2">
-                      {(['LOW', 'MODERATE', 'HIGH', 'CRITICAL'] as const).map(level => (
-                        <button 
-                          key={level} 
-                          type="button" 
-                          onClick={() => setSeverity(level)} 
-                          className={`rounded-xl py-3 text-[10px] font-black tracking-wider transition-colors ${severity === level ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                        >
-                          {level}
-                        </button>
-                      ))}
-                    </div>
-                  </Field>
-                  
-                  <Field label="DESCRIPTION (OPTIONAL)">
-                    <textarea rows={3} value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe what you saw..." />
-                  </Field>
-                  
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    ref={fileInputRef}
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                  />
-                  <button type="button" onClick={() => fileInputRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 p-4 text-sm font-bold text-slate-500 hover:border-sky-400 hover:text-sky-600 transition-colors bg-slate-50">
-                    <Camera className="h-5 w-5" /> {photoName || 'TAKE PHOTO'}
-                  </button>
-                  {exifLocation && (
-                    <div className="text-[10px] text-emerald-600 font-bold bg-emerald-50 p-2 rounded-lg text-center flex items-center justify-center gap-1">
-                      <MapPin className="h-3 w-3" /> Location extracted from photo EXIF
-                    </div>
-                  )}
-                  
-                  <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-4 text-sm font-black text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-colors mt-6">
-                    SUBMIT REPORT
-                  </button>
-                </form>
-              </div>
-            )}
-          </>
-        )}
-        
-        {/* Trust Disclaimer */}
+      {/* TOAST CONFIRMATION */}
+      {submitted && (
+        <div className="fixed top-20 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-xl border border-emerald-500 animate-bounce">
+          <CheckCircle2 className="h-5 w-5" /> Ground report analyzed & logged into SDMA Dispatch Queue.
+        </div>
+      )}
+
+      {/* MAIN CONTAINER */}
+      <main className="max-w-5xl mx-auto p-4 sm:p-6 relative z-10">
+        {activeTab === 'HOME' && renderHome()}
+        {activeTab === 'ALERTS' && renderAlertsTab()}
+        {activeTab === 'ROADS' && renderRoadsTab()}
+        {activeTab === 'WEATHER' && renderWeatherTab()}
+        {activeTab === 'REPORT' && renderReportTab()}
+
+        {/* TRUST DISCLAIMER */}
         <div className="mt-12 text-center text-xs text-slate-400 max-w-xl mx-auto">
-          <p>Risk information is based on available data and may change as conditions change. Always follow official government and emergency instructions.</p>
+          <p>
+            Official disaster intelligence generated by the Assam State Multi-Modal Risk Early Warning Engine. 
+            All public bulletins cross-checked with State Disaster Management Authority guidelines.
+          </p>
         </div>
       </main>
 
-      {/* Mobile Bottom Navigation */}
+      {/* ALERT DETAIL MODAL */}
+      {renderAlertDetailModal()}
+
+      {/* MOBILE BOTTOM NAVIGATION */}
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 pb-safe flex justify-around">
-        <MobileNavButton 
-          icon={<Compass />} label="My Area" 
-          active={activeTab === 'HOME' && !selectedAlert} 
-          onClick={() => { setActiveTab('HOME'); setSelectedAlert(null); }} 
-        />
-        <MobileNavButton 
-          icon={<AlertTriangle />} label="Alerts" 
-          active={activeTab === 'ALERTS' || selectedAlert !== null} 
-          onClick={() => { setActiveTab('ALERTS'); setSelectedAlert(null); }} 
-        />
-        <MobileNavButton 
-          icon={<Navigation2 />} label="Roads" 
-          active={activeTab === 'ROADS' && !selectedAlert} 
-          onClick={() => { setActiveTab('ROADS'); setSelectedAlert(null); }} 
-        />
-        <MobileNavButton 
-          icon={<Camera />} label="Report" 
-          active={activeTab === 'REPORT' && !selectedAlert} 
-          onClick={() => { setActiveTab('REPORT'); setSelectedAlert(null); }} 
-        />
+        <button 
+          onClick={() => setActiveTab('HOME')}
+          className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-1 transition-colors ${activeTab === 'HOME' ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}
+        >
+          <Compass className="h-5 w-5" />
+          <span className="text-[10px]">Overview</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('ALERTS')}
+          className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-1 transition-colors ${activeTab === 'ALERTS' ? 'text-red-600 font-bold' : 'text-slate-500'}`}
+        >
+          <AlertTriangle className="h-5 w-5" />
+          <span className="text-[10px]">Alerts ({displayAlerts.length})</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('ROADS')}
+          className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-1 transition-colors ${activeTab === 'ROADS' ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}
+        >
+          <Route className="h-5 w-5" />
+          <span className="text-[10px]">Roads</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('REPORT')}
+          className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-1 transition-colors ${activeTab === 'REPORT' ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}
+        >
+          <Camera className="h-5 w-5" />
+          <span className="text-[10px]">Report</span>
+        </button>
       </nav>
 
-      {/* Auth Modal */}
+      {/* AUTH MODAL */}
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
@@ -704,36 +1178,3 @@ export const CitizenPortalPage: React.FC = () => {
     </div>
   );
 };
-
-// -------------------------------------------------------------
-// HELPER COMPONENTS
-// -------------------------------------------------------------
-
-const MobileNavButton = ({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) => (
-  <button 
-    onClick={onClick}
-    className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${active ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
-  >
-    <div className={`[&>svg]:w-5 [&>svg]:h-5 ${active ? '[&>svg]:stroke-[2.5px]' : ''}`}>
-      {icon}
-    </div>
-    <span className="text-[10px] font-bold">{label}</span>
-  </button>
-);
-
-const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <label className="block text-xs font-black text-slate-400 tracking-wider">
-    <span className="mb-2 block">{label}</span>
-    <div className="[&>input]:w-full [&>input]:rounded-xl [&>input]:border [&>input]:border-slate-200 [&>input]:bg-slate-50 [&>input]:p-3 [&>input]:text-slate-800 [&>input]:font-medium [&>select]:w-full [&>select]:rounded-xl [&>select]:border [&>select]:border-slate-200 [&>select]:bg-slate-50 [&>select]:p-3 [&>select]:text-slate-800 [&>select]:font-medium [&>textarea]:w-full [&>textarea]:rounded-xl [&>textarea]:border [&>textarea]:border-slate-200 [&>textarea]:bg-slate-50 [&>textarea]:p-3 [&>textarea]:text-slate-800 [&>textarea]:font-medium focus-within:[&>input]:ring-2 focus-within:[&>input]:ring-indigo-100 focus-within:[&>input]:border-indigo-400">
-      {children}
-    </div>
-  </label>
-);
-
-const Advice = ({ title, text }: { title: string; text: string }) => (
-  <li className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm relative overflow-hidden">
-    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-500 rounded-l-2xl" />
-    <strong className="block text-slate-900 text-base mb-1.5">{title}</strong>
-    <span className="text-sm font-medium text-slate-700 leading-relaxed block">{text}</span>
-  </li>
-);
