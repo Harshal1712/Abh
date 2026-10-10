@@ -5,7 +5,8 @@ import {
   Route, CheckCircle2, RotateCcw, AlertTriangle, 
   Send, Compass, Phone, Sparkles
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMapEvents, ZoomControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMapEvents, ZoomControl, useMap } from 'react-leaflet';
+import { AmbulanceSimulationHUD, SimulationState } from './AmbulanceSimulationHUD';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { HazardEvent, EmergencyResource } from '../../types';
@@ -89,6 +90,35 @@ function MapEventsHandler({ onClick }: { onClick: (lat: number, lng: number) => 
   return null;
 }
 
+
+// Auto-panning camera follower for real-time traveling vehicle
+function CameraFollower({ position, follow }: { position?: [number, number]; follow: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (follow && position && position[0] && position[1]) {
+      map.panTo(position, { animate: true, duration: 0.35 });
+    }
+  }, [position, follow, map]);
+  return null;
+}
+
+const createMovingAmbulanceIcon = () => {
+  return L.divIcon({
+    className: 'moving-ambulance-icon',
+    html: `
+      <div style="position:relative;display:flex;align-items:center;justify-content:center;width:44px;height:44px;">
+        <span style="position:absolute;width:44px;height:44px;border-radius:50%;background:#ef4444;opacity:0.6;animation:ping 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>
+        <span style="position:absolute;width:34px;height:34px;border-radius:50%;background:#3b82f6;opacity:0.5;animation:pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;"></span>
+        <div style="position:relative;z-index:10;width:36px;height:36px;border-radius:50%;background:#ffffff;border:3px solid #dc2626;box-shadow:0 8px 18px rgba(220,38,38,0.6);display:flex;align-items:center;justify-content:center;font-size:18px;">
+          🚑
+        </div>
+      </div>
+    `,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+  });
+};
+
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   events,
   selectedEventId,
@@ -121,6 +151,80 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   const [isDeploying, setIsDeploying] = useState<boolean>(false);
   const [deployNotification, setDeployNotification] = useState<string | null>(null);
   const [sidePanelTab, setSidePanelTab] = useState<'risk' | 'logistics' | 'routes'>('risk');
+  const [simState, setSimState] = useState<SimulationState | null>(null);
+
+  // Real-Time Ambulance Simulation Animation Tick Loop
+  useEffect(() => {
+    if (!simState || !simState.isPlaying) return;
+
+    const intervalTime = Math.max(70, Math.floor(250 / simState.speedMultiplier));
+    const timer = setInterval(() => {
+      setSimState((prev) => {
+        if (!prev || !prev.isPlaying) return prev;
+        const nextIdx = prev.currentIndex + 1;
+        if (nextIdx >= prev.waypoints.length) {
+          return {
+            ...prev,
+            currentIndex: prev.waypoints.length - 1,
+            isPlaying: false,
+            etaSeconds: 0,
+            remainingDistanceKm: 0,
+          };
+        }
+
+        const total = prev.waypoints.length;
+        const remRatio = 1 - nextIdx / total;
+        const remDist = prev.totalDistanceKm * remRatio;
+        const remEta = Math.max(0, prev.etaSeconds - (prev.totalDistanceKm > 0 ? prev.etaSeconds / total : 1));
+
+        return {
+          ...prev,
+          currentIndex: nextIdx,
+          remainingDistanceKm: remDist,
+          etaSeconds: remEta,
+        };
+      });
+    }, intervalTime);
+
+    return () => clearInterval(timer);
+  }, [simState?.isPlaying, simState?.speedMultiplier]);
+
+  // Start Real-Time Travelling Simulation along OpenRouteService Waypoints
+  const handleStartTravellingSimulation = async (resource: any) => {
+    const targetLat = clickedPos?.lat || 26.2200;
+    const targetLng = clickedPos?.lng || 91.6450;
+    const targetName = pointQueryData?.placeName || 'Kamrup Hazard Priority Sector';
+
+    try {
+      const res = await fetch(
+        `/api/resources/simulation-route?resourceId=${resource.resourceId}&toLat=${targetLat}&toLng=${targetLng}&targetName=${encodeURIComponent(targetName)}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setSimState({
+          resourceId: data.resourceId,
+          name: data.resourceName,
+          type: data.resourceType,
+          originName: data.start?.name || resource.location?.name || 'Emergency Base',
+          destinationName: data.target?.name || targetName,
+          waypoints: data.waypoints,
+          currentIndex: 0,
+          isPlaying: true,
+          speedMultiplier: 2,
+          speedKmh: data.speedKmh || 55,
+          totalDistanceKm: data.distanceKm || 14.5,
+          remainingDistanceKm: data.distanceKm || 14.5,
+          etaSeconds: data.etaSeconds || 720,
+          turnInstructions: data.turnSteps || [],
+          followCamera: true,
+        });
+        setDeployNotification(`🚨 Started Real-Time Traveling Simulation for ${data.resourceName}`);
+        setTimeout(() => setDeployNotification(null), 5000);
+      }
+    } catch (err) {
+      console.error('Failed to start travel simulation:', err);
+    }
+  };
 
   // Load initial fleet of resources across Assam sector
   const loadResources = async (lat?: number, lng?: number) => {
@@ -206,6 +310,11 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         }
         // Refresh fleet status
         loadResources(clickedPos.lat, clickedPos.lng);
+        // Automatically launch real-time travelling simulation for dispatched unit
+        const matchedRes = resources.find(r => r.resourceId === resourceId);
+        if (matchedRes) {
+          handleStartTravellingSimulation(matchedRes);
+        }
         setTimeout(() => setDeployNotification(null), 6000);
       }
     } catch (e) {
@@ -451,6 +560,56 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           />
         )}
 
+        {/* REAL-TIME TRAVELLING SIMULATION VEHICLE & ROUTE */}
+        {simState && simState.waypoints.length > 0 && (
+          <>
+            {/* Planned Route Polyline */}
+            <Polyline
+              positions={simState.waypoints}
+              pathOptions={{
+                color: '#f43f5e',
+                weight: 6,
+                opacity: 0.85,
+                dashArray: '8, 12',
+              }}
+            />
+
+            {/* Traveled Route Polyline (Covered segment in Emerald) */}
+            {simState.currentIndex > 0 && (
+              <Polyline
+                positions={simState.waypoints.slice(0, simState.currentIndex + 1)}
+                pathOptions={{
+                  color: '#10b981',
+                  weight: 6,
+                  opacity: 0.95,
+                }}
+              />
+            )}
+
+            {/* Moving Vehicle Marker along Waypoints */}
+            <Marker
+              position={simState.waypoints[simState.currentIndex] || simState.waypoints[0]}
+              icon={createMovingAmbulanceIcon()}
+              zIndexOffset={10000}
+            >
+              <Popup autoPan>
+                <div className="p-1 font-sans text-xs">
+                  <div className="font-extrabold text-rose-600">🚨 {simState.name} (IN TRANSIT)</div>
+                  <div>Speed: {Math.round(simState.speedKmh * simState.speedMultiplier)} km/h</div>
+                  <div>Remaining: {simState.remainingDistanceKm.toFixed(1)} km</div>
+                  <div className="text-[10px] text-slate-500">Destination: {simState.destinationName}</div>
+                </div>
+              </Popup>
+            </Marker>
+
+            {/* Auto Camera Follower */}
+            <CameraFollower
+              position={simState.waypoints[simState.currentIndex] || simState.waypoints[0]}
+              follow={simState.followCamera}
+            />
+          </>
+        )}
+
         {/* Dispatched Unit Transit Corridors (Gold Glowing Line) */}
         {dispatchedRoutes.map((rt, idx) => (
           <Polyline 
@@ -528,6 +687,15 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                         ))}
                       </div>
                     </div>
+                  )}
+
+                  {(r.type === 'AMBULANCE' || r.type === 'RESCUE_TEAM' || r.type === 'RESCUE_BOAT') && (
+                    <button
+                      onClick={() => handleStartTravellingSimulation(r)}
+                      className="w-full mt-1.5 py-1.5 px-3 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white rounded-lg font-black text-[10px] flex items-center justify-center gap-1.5 transition shadow"
+                    >
+                      <span>🚑</span> Simulate Real-Time Travel
+                    </button>
                   )}
 
                   {r.status === 'AVAILABLE' && clickedPos && (
@@ -784,7 +952,14 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                         disabled={isDeploying || resourceSummary.nearestAmbulance.status !== 'AVAILABLE'}
                         className="flex-1 py-1.5 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 text-white rounded-lg font-bold text-[10px] flex items-center justify-center gap-1 transition"
                       >
-                        <Send className="h-3 w-3" /> Dispatch Ambulance
+                        <Send className="h-3 w-3" /> Dispatch
+                      </button>
+                      <button
+                        onClick={() => handleStartTravellingSimulation(resourceSummary.nearestAmbulance)}
+                        className="flex-1 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[10px] flex items-center justify-center gap-1 transition shadow"
+                        title="Run real-time vehicle movement simulation"
+                      >
+                        <span>🚑</span> Live Sim
                       </button>
                       <a
                         href={`tel:${resourceSummary.nearestAmbulance.contact}`}
@@ -985,6 +1160,16 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           </div>
         </div>
       )}
+
+      {/* Floating Real-Time Ambulance Simulation Telemetry HUD */}
+      <AmbulanceSimulationHUD
+        sim={simState}
+        onPlayPause={() => setSimState(prev => prev ? ({ ...prev, isPlaying: !prev.isPlaying }) : null)}
+        onSpeedChange={(mult) => setSimState(prev => prev ? ({ ...prev, speedMultiplier: mult }) : null)}
+        onReset={() => setSimState(prev => prev ? ({ ...prev, currentIndex: 0, isPlaying: true, etaSeconds: Math.round(prev.totalDistanceKm * 60) }) : null)}
+        onClose={() => setSimState(null)}
+        onToggleFollowCamera={() => setSimState(prev => prev ? ({ ...prev, followCamera: !prev.followCamera }) : null)}
+      />
 
     </div>
   );

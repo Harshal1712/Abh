@@ -15,6 +15,7 @@ import communityRoutes from './routes/community';
 import alertsRoutes from './routes/alerts';
 import recipientsRoutes from './routes/recipients';
 import resourcesRoutes from './routes/resources';
+import authRoutes from './routes/auth';
 
 // Middleware
 app.use(cors());
@@ -22,6 +23,7 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/risk', riskRoutes);
 app.use('/api/impact', impactRoutes);
 app.use('/api/routes', impactRoutes);

@@ -34,12 +34,32 @@ export const AlertManagementPage: React.FC = () => {
 
   const currentAlert = alerts.find(a => a.id === selectedAlertId) || alerts[0];
 
-  const handlePublish = (id: string, isTest: boolean = false) => {
+  const handlePublish = async (id: string, isTest: boolean = false) => {
     publishAlert(id, isTest);
+    try {
+      const alertDoc = alerts.find(a => a.id === id);
+      if (alertDoc) {
+        await fetch('/api/alerts/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: alertDoc.title,
+            severity: alertDoc.severity,
+            hazardType: alertDoc.hazardType,
+            area: alertDoc.location || 'Kamrup',
+            location: alertDoc.location,
+            safetyInstructions: alertDoc.messageEn,
+            travelAdvisory: 'Immediate travel advisory in effect. Avoid inundated road corridors.',
+          }),
+        });
+      }
+    } catch (e) {
+      console.error('Failed to trigger area email dispatch:', e);
+    }
     setPublishedToast(true);
     setTimeout(() => {
       setPublishedToast(false);
-    }, 3000);
+    }, 4000);
   };
 
   const handleViewInCitizenPortal = () => {

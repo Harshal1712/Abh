@@ -550,4 +550,109 @@ router.get('/routes/nearby', async (req, res) => {
   }
 });
 
+// ==========================================
+// 5. GET HIGH-PRECISION SIMULATION ROUTE (ORS)
+// ==========================================
+router.get('/simulation-route', async (req, res) => {
+  try {
+    await ensureSeedData();
+    const { resourceId, fromLat, fromLng, toLat, toLng, targetName } = req.query;
+
+    let startLat = parseFloat(fromLat as string);
+    let startLng = parseFloat(fromLng as string);
+    let targetLatitude = parseFloat(toLat as string);
+    let targetLongitude = parseFloat(toLng as string);
+
+    let resourceDoc: any = null;
+    if (resourceId) {
+      resourceDoc = await Resource.findOne({ resourceId: String(resourceId) });
+      if (resourceDoc && (isNaN(startLat) || isNaN(startLng))) {
+        startLat = resourceDoc.location.coordinates.lat;
+        startLng = resourceDoc.location.coordinates.lng;
+      }
+    }
+
+    if (isNaN(startLat) || isNaN(startLng)) {
+      startLat = 26.1450;
+      startLng = 91.7920;
+    }
+
+    if (isNaN(targetLatitude) || isNaN(targetLongitude)) {
+      targetLatitude = 26.2200;
+      targetLongitude = 91.6450;
+    }
+
+    const orsKey =
+      process.env.ORS_API_KEY ||
+      'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjlkNDU5NTk5N2VmOTQwYWI4YzI2OWUxNjg3OTUyNjgyIiwiaCI6Im11cm11cjY0In0=';
+    let waypoints: [number, number][] = [];
+    let distanceKm = 0;
+    let durationMin = 0;
+    let turnSteps: string[] = [];
+    let source = 'ORS_API';
+
+    if (orsKey) {
+      try {
+        const orsUrl = 'https://api.openrouteservice.org/v2/directions/driving-car';
+        const orsResp = await axios.get(orsUrl, {
+          params: {
+            api_key: orsKey,
+            start: `${startLng},${startLat}`,
+            end: `${targetLongitude},${targetLatitude}`,
+            radiuses: '-1,-1',
+          },
+          timeout: 6000,
+        });
+
+        if (orsResp.status === 200 && orsResp.data?.features?.length > 0) {
+          const feat = orsResp.data.features[0];
+          const rawCoords = feat.geometry.coordinates; // [lng, lat]
+          waypoints = rawCoords.map((c: [number, number]) => [c[1], c[0]]);
+          const summary = feat.properties.summary;
+          distanceKm = Math.round((summary.distance / 1000) * 10) / 10;
+          durationMin = Math.round((summary.duration / 60) * 10) / 10;
+
+          const segments = feat.properties.segments?.[0]?.steps || [];
+          turnSteps = segments.map((s: any) => s.instruction || 'Follow road corridor').slice(0, 10);
+        }
+      } catch (orsErr: any) {
+        console.warn('[ORS API Warning, falling back to curved spline]:', orsErr.message);
+        source = 'FALLBACK_SPLINE';
+      }
+    }
+
+    if (waypoints.length === 0) {
+      waypoints = generateRoutePath([startLat, startLng], [targetLatitude, targetLongitude], 0.7);
+      distanceKm = calculateDistanceKm(startLat, startLng, targetLatitude, targetLongitude);
+      durationMin = Math.round((distanceKm / (resourceDoc?.speedKmh || 50)) * 60);
+      turnSteps = [
+        `Depart base: ${resourceDoc?.location?.name || 'Emergency Dispatch Post'}`,
+        'Engage Emergency Lights & Sirens (Code 3 Transit)',
+        'Navigate arterial high-ground flood corridor',
+        `Arrive at: ${targetName || 'Disaster Incident Sector'}`,
+      ];
+    }
+
+    res.json({
+      success: true,
+      resourceId: resourceId || resourceDoc?.resourceId || 'AMB-108-GHY01',
+      resourceName: resourceDoc?.name || '108 ALS Trauma Ambulance',
+      resourceType: resourceDoc?.type || 'AMBULANCE',
+      speedKmh: resourceDoc?.speedKmh || 55,
+      contact: resourceDoc?.contact || '108',
+      equipment: resourceDoc?.equipment || ['Ventilator', 'ECG', 'Oxygen'],
+      start: { lat: startLat, lng: startLng, name: resourceDoc?.location?.name || 'Origin Base' },
+      target: { lat: targetLatitude, lng: targetLongitude, name: targetName || 'Target Emergency Sector' },
+      distanceKm,
+      durationMin,
+      etaSeconds: Math.round(durationMin * 60),
+      waypoints,
+      turnSteps,
+      source,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

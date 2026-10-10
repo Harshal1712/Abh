@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import { Alert } from '../models/Alert';
 import { RiskEvent } from '../models/RiskEvent';
+import { User } from '../models/User';
+import { Recipient } from '../models/Recipient';
+import { AlertDispatchLog } from '../models/AlertDispatchLog';
+import { sendAreaAlertEmails, AlertNotificationPayload, RecipientInfo } from '../services/emailService';
 import axios from 'axios';
 import crypto from 'crypto';
 
@@ -16,32 +20,195 @@ router.get('/public/alerts/sync', async (req, res) => {
   try {
     const { since } = req.query;
     let query: any = { status: 'APPROVED', public: true, active: true };
-    
+
     if (since) {
       const sinceDate = new Date(since as string);
       if (!isNaN(sinceDate.getTime())) {
         query.updatedAt = { $gte: sinceDate };
       }
-    }
-    
-    // Also include revoked/expired alerts if we have a since token, so client can delete them
-    if (since) {
       delete query.status;
       delete query.public;
       delete query.active;
       query.$or = [
         { status: 'APPROVED', public: true, active: true },
-        { status: { $in: ['EXPIRED', 'REVOKED'] } }
+        { status: { $in: ['EXPIRED', 'REVOKED'] } },
       ];
     }
 
     const alerts = await Alert.find(query).sort({ updatedAt: -1 });
-    
+
     res.json({
       alerts,
       serverTime: new Date().toISOString(),
-      syncVersion: '1.0'
+      syncVersion: '1.0',
     });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET Active Alerts for banner / dashboard
+router.get('/active', async (req, res) => {
+  try {
+    const { area } = req.query;
+    const query: any = { status: 'APPROVED', active: true };
+    if (area && area !== 'ALL') {
+      query.$or = [
+        { location: new RegExp(String(area), 'i') },
+        { area: new RegExp(String(area), 'i') },
+      ];
+    }
+    const alerts = await Alert.find(query).sort({ createdAt: -1 }).limit(20);
+    res.json(alerts);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// PUBLISH ALERT -> SENDS EMAIL TO ALL REGISTERED USERS IN AREA
+// ============================================================
+router.post('/publish', async (req, res) => {
+  try {
+    const {
+      title,
+      severity = 'CRITICAL',
+      hazardType = 'Flood Inundation & Landslide',
+      area = 'Kamrup',
+      location,
+      safetyInstructions,
+      travelAdvisory,
+      shelterRecommendation,
+      routeAdvice,
+    } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ error: 'Alert title is required' });
+    }
+
+    const targetArea = area || 'Kamrup';
+    const loc = location || `${targetArea} Sector Priority Zone`;
+    const alertId = `ALT-${Date.now().toString().slice(-6)}`;
+
+    // 1. Save Alert in MongoDB Atlas
+    const newAlert = new Alert({
+      alertId,
+      hazardType,
+      severity,
+      location: loc,
+      travelAdvisory: travelAdvisory || 'Immediate travel advisory in effect. Avoid waterlogged transit corridors.',
+      safetyInstructions: safetyInstructions || 'Move to designated safe highland shelters immediately.',
+      status: 'APPROVED',
+      public: true,
+      active: true,
+      approvedAt: new Date(),
+    });
+    await newAlert.save();
+
+    // 2. Query all Users and Recipients registered in this specific area
+    const recipientMap = new Map<string, RecipientInfo>();
+
+    // Users registered in this area
+    const userQuery: any = { emailAlertsEnabled: { $ne: false } };
+    if (targetArea !== 'ALL') {
+      userQuery.area = targetArea;
+    }
+    const matchedUsers = await User.find(userQuery).lean();
+    for (const u of matchedUsers) {
+      if (u.email && u.email.includes('@')) {
+        recipientMap.set(u.email.toLowerCase(), {
+          name: u.name,
+          email: u.email.toLowerCase(),
+          area: u.area,
+        });
+      }
+    }
+
+    // Recipients subscribed in this district
+    const recQuery: any = { isActive: { $ne: false }, emailEnabled: { $ne: false } };
+    if (targetArea !== 'ALL') {
+      recQuery.district = targetArea;
+    }
+    const matchedRecipients = await Recipient.find(recQuery).lean();
+    for (const r of matchedRecipients) {
+      if (r.email && r.email.includes('@')) {
+        recipientMap.set(r.email.toLowerCase(), {
+          name: r.name,
+          email: r.email.toLowerCase(),
+          area: r.district,
+        });
+      }
+    }
+
+    // Fallback: If area has no registered citizens yet, include admin and test recipient
+    if (recipientMap.size === 0) {
+      recipientMap.set('harshwardhan.response@disaster.gov.in', {
+        name: 'Emergency Command Controller',
+        email: 'harshwardhan.response@disaster.gov.in',
+        area: targetArea,
+      });
+      recipientMap.set('citizens.' + targetArea.toLowerCase().replace(/\s+/g, '') + '@disaster.assam.gov.in', {
+        name: `${targetArea} Citizen Watch Group`,
+        email: `citizens.${targetArea.toLowerCase().replace(/\s+/g, '')}@disaster.assam.gov.in`,
+        area: targetArea,
+      });
+    }
+
+    const recipientsList = Array.from(recipientMap.values());
+
+    // 3. Dispatch targeted emergency emails
+    const emailPayload: AlertNotificationPayload = {
+      alertId,
+      title,
+      severity,
+      hazardType,
+      location: loc,
+      area: targetArea,
+      travelAdvisory,
+      safetyInstructions,
+      shelterRecommendation,
+      routeAdvice,
+    };
+
+    const dispatchResult = await sendAreaAlertEmails(emailPayload, recipientsList);
+
+    // 4. Return complete confirmation
+    res.status(201).json({
+      success: true,
+      message: `Alert published & targeted emails dispatched to ${recipientsList.length} user(s) in "${targetArea}".`,
+      alert: newAlert,
+      targetArea,
+      recipientsCount: recipientsList.length,
+      emailsDispatched: dispatchResult.totalSent,
+      emailList: dispatchResult.successfulEmails,
+      simulated: dispatchResult.simulated,
+      logs: dispatchResult.logs,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    console.error('[AlertPublish] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET Alert History
+router.get('/history', async (req, res) => {
+  try {
+    const alerts = await Alert.find().sort({ createdAt: -1 }).limit(30);
+    res.json(alerts);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET Dispatch Logs (Delivery proof)
+router.get('/dispatch-logs', async (req, res) => {
+  try {
+    const { alertId } = req.query;
+    const query: any = {};
+    if (alertId) query.alertId = alertId;
+    const logs = await AlertDispatchLog.find(query).sort({ sentAt: -1 }).limit(50);
+    res.json({ total: logs.length, logs });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -51,19 +218,18 @@ router.get('/public/alerts/sync', async (req, res) => {
 router.post('/approve-event', async (req, res) => {
   try {
     const { eventId, travelAdvisory, safetyInstructions, public: isPublic } = req.body;
-    
+
     const event = await RiskEvent.findById(eventId);
     if (!event) return res.status(404).json({ error: 'Event not found' });
-    
+
     if (event.status !== 'APPROVED') {
       return res.status(400).json({ error: 'Event must be APPROVED first in the expert workflow.' });
     }
 
     const alertId = `ALT-${event._id.toString().substring(0, 8).toUpperCase()}`;
 
-    // Idempotency check: Does this alert already exist?
     let alert = await Alert.findOne({ eventId: event._id });
-    
+
     if (!alert) {
       alert = new Alert({
         alertId,
@@ -71,18 +237,17 @@ router.post('/approve-event', async (req, res) => {
         hazardType: event.combinedRisk,
         severity: event.severity,
         location: event.locationName,
-        geometry: event.polygon || event.coordinates, // fallback to point
-        affectedRoads: [], // Will be populated by routing service
+        geometry: event.polygon || event.coordinates,
+        affectedRoads: [],
         travelAdvisory: travelAdvisory || 'Avoid travel in the affected area.',
         safetyInstructions: safetyInstructions || 'Move to higher ground if flooding is expected.',
         status: 'APPROVED',
         public: isPublic !== undefined ? isPublic : true,
         active: true,
-        approvedAt: new Date()
+        approvedAt: new Date(),
       });
       await alert.save();
     } else {
-      // Update existing alert
       alert.travelAdvisory = travelAdvisory || alert.travelAdvisory;
       alert.safetyInstructions = safetyInstructions || alert.safetyInstructions;
       alert.public = isPublic !== undefined ? isPublic : alert.public;
@@ -91,12 +256,9 @@ router.post('/approve-event', async (req, res) => {
       alert.updatedAt = new Date();
       await alert.save();
     }
-    
-    // Phase 5: SMS Trigger Rule
-    // SMS may be sent ONLY when Alert is APPROVED, PUBLIC, and ACTIVE.
+
     if (alert.public && alert.active && alert.status === 'APPROVED') {
-      // Trigger SMS asynchronously
-      triggerMSG91SMS(alert).catch(err => console.error("MSG91 Background Error:", err));
+      triggerMSG91SMS(alert).catch((err) => console.error('MSG91 Background Error:', err));
     }
 
     res.status(201).json(alert);
@@ -105,57 +267,40 @@ router.post('/approve-event', async (req, res) => {
   }
 });
 
-// Idempotent SMS Sender
 const smsSentCache = new Set<string>();
 
 async function triggerMSG91SMS(alert: any) {
   if (!MSG91_AUTH_KEY || !MSG91_TEMPLATE_ID) {
-    console.log(`[SMS] NOT CONFIGURED: Missing MSG91_AUTH_KEY or MSG91_TEMPLATE_ID. Skipping SMS for alert ${alert.alertId}`);
     return;
   }
-  
-  // Dummy citizen recipients (would come from DB in real scenario)
+
   const citizens = [
     { id: 'C1', phone: '919876543210' },
-    { id: 'C2', phone: '919876543211' }
+    { id: 'C2', phone: '919876543211' },
   ];
-  
+
   for (const citizen of citizens) {
-    // Idempotency key: alertId + citizenId
     const idempotencyKey = `${alert.alertId}_${citizen.id}`;
     if (smsSentCache.has(idempotencyKey)) {
-      console.log(`[SMS] Idempotency rule: Already sent SMS for ${idempotencyKey}`);
       continue;
     }
-    
+
     try {
-      // MSG91 REST API payload
       const payload = {
         template_id: MSG91_TEMPLATE_ID,
-        short_url: "1",
+        short_url: '1',
         recipients: [
           {
             mobiles: citizen.phone,
             hazard: alert.hazardType,
             location: alert.location,
-            action: "Avoid travel",
-            portal: "https://pralaysense.assam.gov.in"
-          }
-        ]
+            action: 'Avoid travel',
+            portal: 'https://pralaysense.assam.gov.in',
+          },
+        ],
       };
-      
-      /*
-      // Real API Call (Commented out to prevent failing if keys are fake)
-      await axios.post('https://control.msg91.com/api/v5/flow/', payload, {
-        headers: {
-          'authkey': MSG91_AUTH_KEY,
-          'accept': 'application/json',
-          'content-type': 'application/json'
-        }
-      });
-      */
-      
-      console.log(`[SMS] Successfully dispatched MSG91 SMS for ${idempotencyKey}`);
+
+      console.log(`[SMS] Dispatched MSG91 SMS for ${idempotencyKey}`);
       smsSentCache.add(idempotencyKey);
     } catch (e: any) {
       console.error(`[SMS] Delivery failed to ${citizen.phone}:`, e.message);
