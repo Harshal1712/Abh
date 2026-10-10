@@ -55,7 +55,13 @@ export const Header: React.FC = () => {
           <div className="flex items-center gap-2 flex-wrap">
             {/* Broadcast Alert Button */}
             <button
-              onClick={() => setPublishAlertModalOpen(true)}
+              onClick={() => {
+                if (!currentUser || !['ADMIN', 'EXPERT', 'DISPATCHER', 'FIRST_RESPONDER'].includes(currentUser.role)) {
+                  setAuthModalOpen(true);
+                  return;
+                }
+                setPublishAlertModalOpen(true);
+              }}
               className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-wide text-white bg-gradient-to-r from-rose-600 via-rose-700 to-red-700 hover:from-rose-700 hover:to-red-800 shadow-md shadow-rose-200 transition-all active:scale-95"
               title="Publish Emergency Alert with Area Email Dispatch"
             >
@@ -67,6 +73,10 @@ export const Header: React.FC = () => {
             <div className="bg-white/80 p-0.5 rounded-full border border-slate-200 flex items-center gap-1 shadow-sm">
               <button
                 onClick={() => {
+                  if (!currentUser || !['ADMIN', 'EXPERT', 'DISPATCHER', 'FIRST_RESPONDER'].includes(currentUser.role)) {
+                    setAuthModalOpen(true);
+                    return;
+                  }
                   setUserRole('EXPERT');
                   if (activeTab === 'community-reports') setActiveTab('dashboard');
                 }}
@@ -75,6 +85,7 @@ export const Header: React.FC = () => {
                     ? 'bg-gradient-to-r from-sky-600 to-indigo-600 text-white shadow-sm'
                     : 'text-slate-500 hover:bg-slate-50'
                 }`}
+                title="Command Operations Console (Admin clearance required)"
               >
                 <UserCheck className="h-3 w-3" /> EXPERT
               </button>
@@ -85,6 +96,7 @@ export const Header: React.FC = () => {
                     ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-sm'
                     : 'text-slate-500 hover:bg-slate-50'
                 }`}
+                title="Citizen Public Safety Portal"
               >
                 <Users className="h-3 w-3" /> CITIZEN
               </button>

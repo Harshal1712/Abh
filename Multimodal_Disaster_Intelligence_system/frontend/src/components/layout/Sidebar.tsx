@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import type { NavTab } from '../../context/AppContext';
 
 export const Sidebar: React.FC = () => {
-  const { activeTab, setActiveTab, events, alerts, communityReports, isMobileMenuOpen, setIsMobileMenuOpen } = useApp();
+  const { activeTab, setActiveTab, events, alerts, communityReports, isMobileMenuOpen, setIsMobileMenuOpen, currentUser } = useApp();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pendingReviewCount = events.filter(e => e.status === 'PENDING_REVIEW').length;
   const pendingAlertCount = alerts.filter(a => a.status === 'PENDING_PUBLISH').length;
@@ -66,7 +66,28 @@ export const Sidebar: React.FC = () => {
           })}</div></div>)}
         </nav>
       </div>
-      <div className={`p-4 border-t border-slate-100 bg-white/65 m-3 rounded-2xl shadow-sm backdrop-blur-md ${isCollapsed ? 'px-2' : ''}`}><div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}><div className="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-100 flex items-center justify-center font-bold font-display shadow-sm">AS</div><div className={`${isCollapsed ? 'hidden' : ''} overflow-hidden`}><span className="text-[10px] font-bold uppercase text-indigo-600 tracking-wider block">Signed in as</span><h4 className="text-xs font-bold text-slate-800 truncate mt-0.5">Dr. Ananya Sharma</h4><p className="text-[10px] text-slate-500 truncate">Disaster Risk Analyst</p></div></div></div>
+      <div className={`p-4 border-t border-slate-100 bg-white/65 m-3 rounded-2xl shadow-sm backdrop-blur-md ${isCollapsed ? 'px-2' : ''}`}>
+        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+          <div className="h-10 w-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black font-display shadow-sm text-xs">
+            {currentUser?.name ? (
+              currentUser.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+            ) : (
+              'OP'
+            )}
+          </div>
+          <div className={`${isCollapsed ? 'hidden' : ''} overflow-hidden flex-1`}>
+            <span className="text-[10px] font-bold uppercase text-indigo-600 tracking-wider block">
+              {currentUser?.role === 'ADMIN' ? 'Command Controller' : currentUser?.role === 'FIRST_RESPONDER' ? 'First Responder' : currentUser?.role === 'DISPATCHER' ? 'Emergency Dispatcher' : 'Disaster Analyst'}
+            </span>
+            <h4 className="text-xs font-bold text-slate-800 truncate mt-0.5" title={currentUser?.name || 'Authorized Operator'}>
+              {currentUser?.name || 'Authorized Operator'}
+            </h4>
+            <p className="text-[10px] text-slate-500 truncate">
+              {currentUser?.area ? `${currentUser.area} Sector` : 'Assam Central Command'}
+            </p>
+          </div>
+        </div>
+      </div>
     </aside>
     </>
   );

@@ -83,8 +83,27 @@ const STORAGE_KEYS = {
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState<any | null>(() => {
+    try {
+      const stored = localStorage.getItem('resqgrid_auth_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [userRole, setUserRoleState] = useState<UserRole>(() => {
-    return (localStorage.getItem(STORAGE_KEYS.ROLE) as UserRole) || 'EXPERT';
+    try {
+      const storedUser = localStorage.getItem('resqgrid_auth_user');
+      if (storedUser) {
+        const u = JSON.parse(storedUser);
+        if (['ADMIN', 'EXPERT', 'DISPATCHER', 'FIRST_RESPONDER'].includes(u.role)) {
+          const savedRole = localStorage.getItem(STORAGE_KEYS.ROLE) as UserRole;
+          return savedRole === 'CITIZEN' ? 'CITIZEN' : 'EXPERT';
+        }
+      }
+    } catch {}
+    return 'CITIZEN';
   });
 
   const [activeTab, setActiveTabState] = useState<NavTab>(() => {
@@ -98,25 +117,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [dispatchModalData, setDispatchModalData] = useState<any | null>(null);
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any | null>(() => {
-    try {
-      const stored = localStorage.getItem('resqgrid_auth_user');
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
 
-  // Sync role based on logged in user
+  // Sync role whenever currentUser changes: unauthenticated or citizen always forced to CITIZEN
   useEffect(() => {
-    if (currentUser) {
-      if (['ADMIN', 'EXPERT', 'DISPATCHER', 'FIRST_RESPONDER'].includes(currentUser.role)) {
-        setUserRoleState('EXPERT');
-      } else if (currentUser.role === 'CITIZEN') {
+    if (!currentUser) {
+      setUserRoleState('CITIZEN');
+      localStorage.setItem(STORAGE_KEYS.ROLE, 'CITIZEN');
+    } else if (currentUser.role === 'CITIZEN') {
+      setUserRoleState('CITIZEN');
+      localStorage.setItem(STORAGE_KEYS.ROLE, 'CITIZEN');
+    } else if (['ADMIN', 'EXPERT', 'DISPATCHER', 'FIRST_RESPONDER'].includes(currentUser.role)) {
+      const savedRole = localStorage.getItem(STORAGE_KEYS.ROLE) as UserRole;
+      if (savedRole === 'CITIZEN') {
         setUserRoleState('CITIZEN');
+      } else {
+        setUserRoleState('EXPERT');
       }
     }
-  }, []);
+  }, [currentUser]);
 
   const loginUser = (user: any, token?: string) => {
     setCurrentUser(user);
@@ -125,15 +143,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (['ADMIN', 'EXPERT', 'DISPATCHER', 'FIRST_RESPONDER'].includes(user.role)) {
       setUserRoleState('EXPERT');
+      localStorage.setItem(STORAGE_KEYS.ROLE, 'EXPERT');
       setActiveTabState('dashboard');
     } else {
       setUserRoleState('CITIZEN');
+      localStorage.setItem(STORAGE_KEYS.ROLE, 'CITIZEN');
     }
   };
 
   const logoutUser = () => {
     localStorage.removeItem('resqgrid_auth_user');
     localStorage.removeItem('resqgrid_auth_token');
+    localStorage.setItem(STORAGE_KEYS.ROLE, 'CITIZEN');
     setCurrentUser(null);
     setUserRoleState('CITIZEN');
   };
@@ -371,7 +392,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [thresholds]);
 
   const setUserRole = (role: UserRole) => {
+    if (role === 'EXPERT') {
+      const isAuthorized = currentUser && ['ADMIN', 'EXPERT', 'DISPATCHER', 'FIRST_RESPONDER'].includes(currentUser.role);
+      if (!isAuthorized) {
+        setAuthModalOpen(true);
+        return;
+      }
+    }
     setUserRoleState(role);
+    localStorage.setItem(STORAGE_KEYS.ROLE, role);
   };
 
   const setActiveTab = (tab: NavTab) => {

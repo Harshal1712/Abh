@@ -480,10 +480,11 @@ export const CitizenPortalPage: React.FC = () => {
                 </button>
 
                 <button 
-                  onClick={() => setUserRole('EXPERT')} 
-                  className="hidden sm:flex text-[11px] font-bold bg-white hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg transition border border-slate-200 shadow-2xs"
+                  onClick={() => setAuthModalOpen(true)} 
+                  className="hidden sm:flex items-center gap-1.5 text-[11px] font-bold bg-white hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg transition border border-slate-200 shadow-2xs"
+                  title="Operations Console requires Admin or First Responder clearance"
                 >
-                  Switch to Expert View
+                  <Shield className="h-3 w-3 text-indigo-600" /> Admin Portal
                 </button>
               </div>
             )}
