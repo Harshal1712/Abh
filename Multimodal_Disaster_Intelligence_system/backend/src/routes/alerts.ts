@@ -15,6 +15,16 @@ const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY;
 const MSG91_TEMPLATE_ID = process.env.MSG91_TEMPLATE_ID;
 const MSG91_SENDER_ID = process.env.MSG91_SENDER_ID || 'PRALAY';
 
+// GET All Alerts (Used by AppContext fetchAlertsFromServer)
+router.get('/', async (req, res) => {
+  try {
+    const alerts = await Alert.find().sort({ createdAt: -1 });
+    res.json(alerts);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Phase 4: Offline PWA & Citizen Alert Page Sync
 router.get('/public/alerts/sync', async (req, res) => {
   try {
