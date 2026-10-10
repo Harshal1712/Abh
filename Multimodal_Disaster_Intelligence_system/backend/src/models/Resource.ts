@@ -26,6 +26,11 @@ export interface IResource extends Document {
   } | null;
   speedKmh: number;
   equipment: string[];
+  driverName?: string;
+  driverPhone?: string;
+  vehicleNumber?: string;
+  elevationMeters?: number;
+  isLandslideSafe?: boolean;
   deployedAt?: Date | null;
   etaMinutes?: number | null;
 }
@@ -61,6 +66,11 @@ const ResourceSchema = new Schema<IResource>({
   },
   speedKmh: { type: Number, default: 45 },
   equipment: [{ type: String }],
+  driverName: { type: String },
+  driverPhone: { type: String },
+  vehicleNumber: { type: String },
+  elevationMeters: { type: Number, default: 45 },
+  isLandslideSafe: { type: Boolean, default: true },
   deployedAt: { type: Date, default: null },
   etaMinutes: { type: Number, default: null },
 }, { timestamps: true });

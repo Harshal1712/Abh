@@ -39,7 +39,7 @@ function generateRoutePath(start: [number, number], end: [number, number], detou
 
 // Initial Emergency Fleet & Infrastructure in Assam Disaster Belt
 const INITIAL_RESOURCES = [
-  // AMBULANCES
+  // AMBULANCES WITH DRIVER CONTACTS & VEHICLE DETAILS
   {
     resourceId: 'AMB-108-GHY01',
     name: '108 ALS Trauma Ambulance (Dispur Base)',
@@ -50,11 +50,30 @@ const INITIAL_RESOURCES = [
       coordinates: { lat: 26.1450, lng: 91.7920 },
     },
     contact: '108 / +91-361-2234001',
+    driverName: 'Ranjit Das',
+    driverPhone: '+91 98640 12345',
+    vehicleNumber: 'AS-01-EA-1081',
     speedKmh: 55,
     equipment: ['Ventilator', 'ECG Monitor', 'Oxygen Supply', 'Defibrillator', 'First Aid Trauma Kit'],
   },
   {
-    resourceId: 'AMB-108-KMR02',
+    resourceId: 'AMB-108-KHN02',
+    name: '108 Khanapara Rapid Hill Response Ambulance',
+    type: 'AMBULANCE',
+    status: 'AVAILABLE',
+    location: {
+      name: 'Khanapara Transit Post, Guwahati',
+      coordinates: { lat: 26.1280, lng: 91.8210 },
+    },
+    contact: '108 / +91-361-2345091',
+    driverName: 'Bikash Bora',
+    driverPhone: '+91 94350 88219',
+    vehicleNumber: 'AS-01-GC-4092',
+    speedKmh: 52,
+    equipment: ['Oxygen Supply', 'Spine Board', 'Suction Machine', '4x4 Hill Terrain Drive', 'First Aid Kit'],
+  },
+  {
+    resourceId: 'AMB-108-KMR03',
     name: '108 Emergency Ambulance (Kamrup Rural Unit)',
     type: 'AMBULANCE',
     status: 'AVAILABLE',
@@ -63,11 +82,46 @@ const INITIAL_RESOURCES = [
       coordinates: { lat: 26.2200, lng: 91.6450 },
     },
     contact: '108 / +91-361-2891102',
+    driverName: 'Suraj Gogoi',
+    driverPhone: '+91 98540 66782',
+    vehicleNumber: 'AS-01-EZ-7731',
     speedKmh: 50,
     equipment: ['Oxygen Supply', 'Stretcher', 'Splints', 'Critical Care Monitor'],
   },
   {
-    resourceId: 'AMB-108-TEZ03',
+    resourceId: 'AMB-108-HFL04',
+    name: '108 Mountain Terrain 4x4 ALS Ambulance (Haflong)',
+    type: 'AMBULANCE',
+    status: 'AVAILABLE',
+    location: {
+      name: 'Haflong Civil Hospital Hill Post, Dima Hasao',
+      coordinates: { lat: 25.1720, lng: 93.0290 },
+    },
+    contact: '108 / +91-3673-236108',
+    driverName: 'Lalringthang Hmar',
+    driverPhone: '+91 96120 44321',
+    vehicleNumber: 'AS-08-M-1080',
+    speedKmh: 45,
+    equipment: ['4x4 Mountain Winch', 'Highland Trauma Stretcher', 'Cardiac Monitor', 'Portable Oxygen System'],
+  },
+  {
+    resourceId: 'AMB-108-SIL05',
+    name: '108 Barak Valley Emergency Ambulance (Silchar)',
+    type: 'AMBULANCE',
+    status: 'AVAILABLE',
+    location: {
+      name: 'Silchar Civil Hospital Transit Hub',
+      coordinates: { lat: 24.8320, lng: 92.7830 },
+    },
+    contact: '108 / +91-3842-245108',
+    driverName: 'Pranab Nath',
+    driverPhone: '+91 97060 99451',
+    vehicleNumber: 'AS-11-BC-1085',
+    speedKmh: 48,
+    equipment: ['Emergency Resuscitator', 'Portable Ventilator', 'Trauma Kit'],
+  },
+  {
+    resourceId: 'AMB-108-TEZ06',
     name: '108 Critical Care Ambulance (Tezpur Sector)',
     type: 'AMBULANCE',
     status: 'AVAILABLE',
@@ -76,11 +130,14 @@ const INITIAL_RESOURCES = [
       coordinates: { lat: 26.6500, lng: 92.7950 },
     },
     contact: '108 / +91-3712-255108',
+    driverName: 'Dipankar Saikia',
+    driverPhone: '+91 98642 77103',
+    vehicleNumber: 'AS-12-E-1084',
     speedKmh: 50,
     equipment: ['Cardiac Monitor', 'Advanced Airway Kit', 'Spine Board', 'Suction Machine'],
   },
   {
-    resourceId: 'AMB-108-DIB04',
+    resourceId: 'AMB-108-DIB07',
     name: '108 Rapid Transit Ambulance (Dibrugarh Unit)',
     type: 'AMBULANCE',
     status: 'AVAILABLE',
@@ -89,8 +146,27 @@ const INITIAL_RESOURCES = [
       coordinates: { lat: 27.4750, lng: 94.9150 },
     },
     contact: '108 / +91-373-2321108',
+    driverName: 'Nayanmoni Dutta',
+    driverPhone: '+91 94351 22904',
+    vehicleNumber: 'AS-06-K-1089',
     speedKmh: 48,
     equipment: ['Portable Ventilator', 'Trauma Kit', 'Burn Dressing Packs'],
+  },
+  {
+    resourceId: 'AMB-108-DAR08',
+    name: '108 Darrang Emergency Trauma Ambulance (Mangaldai Hub)',
+    type: 'AMBULANCE',
+    status: 'AVAILABLE',
+    location: {
+      name: 'Mangaldai Civil Hospital, Darrang',
+      coordinates: { lat: 26.4365, lng: 92.0315 },
+    },
+    contact: '108 / +91-3713-222108',
+    driverName: 'Hitesh Nath',
+    driverPhone: '+91 94350 44108',
+    vehicleNumber: 'AS-13-B-1088',
+    speedKmh: 52,
+    equipment: ['Ventilator', 'Oxygen Concentrator', 'ECG Monitor', 'Emergency Splints', 'Trauma Pack'],
   },
 
   // RESCUE TEAMS / NDRF / SDRF
@@ -177,9 +253,11 @@ const INITIAL_RESOURCES = [
       coordinates: { lat: 26.1550, lng: 91.7750 },
     },
     contact: '+91-361-2529457',
-    capacity: 250, // ICU / Emergency beds
+    capacity: 250,
     currentOccupancy: 188,
     speedKmh: 0,
+    elevationMeters: 55,
+    isLandslideSafe: true,
     equipment: ['Level-1 Trauma Center', '45 ICU Beds Available', 'Blood Bank (All Groups)', '24/7 Emergency Surgery'],
   },
   {
@@ -195,25 +273,12 @@ const INITIAL_RESOURCES = [
     capacity: 180,
     currentOccupancy: 95,
     speedKmh: 0,
+    elevationMeters: 62,
+    isLandslideSafe: true,
     equipment: ['Advanced Burn Care', 'Trauma Critical Care', '60 Ventilators', 'Telemedicine Emergency Wing'],
   },
-  {
-    resourceId: 'HOSP-TMCH-TEZ',
-    name: 'Tezpur Medical College & Hospital (TMCH)',
-    type: 'HOSPITAL',
-    status: 'AVAILABLE',
-    location: {
-      name: 'Bihaguri, Tezpur',
-      coordinates: { lat: 26.6350, lng: 92.7820 },
-    },
-    contact: '+91-3712-241001',
-    capacity: 120,
-    currentOccupancy: 84,
-    speedKmh: 0,
-    equipment: ['Emergency Ward', '20 ICU Beds', 'Oxygen Plant', 'Pediatric Emergency Care'],
-  },
 
-  // RELIEF SHELTERS
+  // RELIEF SHELTERS & LANDSLIDE-SAFE HIGH GROUND BEDROCK HAVENS
   {
     resourceId: 'SHELTER-KAMRUP-01',
     name: 'Kamrup District Flood Relief & Evacuation Shelter',
@@ -227,6 +292,8 @@ const INITIAL_RESOURCES = [
     capacity: 950,
     currentOccupancy: 210,
     speedKmh: 0,
+    elevationMeters: 78,
+    isLandslideSafe: true,
     equipment: ['Emergency Food Rations', 'Water Purification Units', 'Sanitary Facilities', 'Backup Generators', 'Medical Camp'],
   },
   {
@@ -242,15 +309,93 @@ const INITIAL_RESOURCES = [
     capacity: 1400,
     currentOccupancy: 340,
     speedKmh: 0,
+    elevationMeters: 85,
+    isLandslideSafe: true,
     equipment: ['Community Kitchen', 'Bedding & Blankets', 'First Aid Station', 'Baby Care Facility'],
+  },
+  {
+    resourceId: 'SHELTER-HAFLONG-03',
+    name: 'Haflong Government College Highland Plateau Safe Camp',
+    type: 'SHELTER',
+    status: 'AVAILABLE',
+    location: {
+      name: 'Haflong Hill Ridge, Dima Hasao',
+      coordinates: { lat: 25.1680, lng: 93.0180 },
+    },
+    contact: '+91-3673-236222 / DC Haflong',
+    capacity: 800,
+    currentOccupancy: 120,
+    speedKmh: 0,
+    elevationMeters: 750,
+    isLandslideSafe: true,
+    equipment: ['Solid Granitic Bedrock Ridge', 'Zero Debris Flow Path', 'Emergency Solar Generator', 'Helipad Access', 'Medical Camp'],
+  },
+  {
+    resourceId: 'SHELTER-KHN-04',
+    name: 'Khanapara Veterinary Highland Ridge Center',
+    type: 'SHELTER',
+    status: 'AVAILABLE',
+    location: {
+      name: 'Khanapara Campus Plateau, Guwahati',
+      coordinates: { lat: 26.1250, lng: 91.8280 },
+    },
+    contact: '+91-361-2360145',
+    capacity: 700,
+    currentOccupancy: 180,
+    speedKmh: 0,
+    elevationMeters: 110,
+    isLandslideSafe: true,
+    equipment: ['Elevated Bedrock Formation', 'Direct Highway Access', 'RO Water Treatment Plant', 'Emergency Medical Ward'],
+  },
+  {
+    resourceId: 'SHELTER-SILCHAR-05',
+    name: 'Silchar Circuit House Highland Ridge Center',
+    type: 'SHELTER',
+    status: 'AVAILABLE',
+    location: {
+      name: 'Tarapur Highland Ridge, Silchar',
+      coordinates: { lat: 24.8290, lng: 92.7950 },
+    },
+    contact: '+91-3842-233111',
+    capacity: 650,
+    currentOccupancy: 190,
+    speedKmh: 0,
+    elevationMeters: 65,
+    isLandslideSafe: true,
+    equipment: ['Elevated Flood Safe Mound', 'Emergency Rations Store', 'Doctor On Duty', 'High Capacity Generators'],
+  },
+  {
+    resourceId: 'SHELTER-DARRANG-06',
+    name: 'Mangaldai College Highland Flood Relief Center, Darrang',
+    type: 'SHELTER',
+    status: 'AVAILABLE',
+    location: {
+      name: 'Mangaldai Higher Ground Enclave, Darrang',
+      coordinates: { lat: 26.4385, lng: 92.0340 },
+    },
+    contact: '+91-3713-222108',
+    capacity: 1100,
+    currentOccupancy: 240,
+    speedKmh: 0,
+    elevationMeters: 68,
+    isLandslideSafe: true,
+    equipment: ['Community Kitchen', 'Water Purification Units', 'Emergency Bedding', 'Medical Camp', 'Backup Diesel Generator'],
   },
 ];
 
-// Helper to seed data if empty
+// Helper to seed data and upsert rich driver and shelter info
 async function ensureSeedData() {
   const count = await Resource.countDocuments();
   if (count === 0) {
     await Resource.insertMany(INITIAL_RESOURCES);
+  } else {
+    for (const resData of INITIAL_RESOURCES) {
+      await Resource.updateOne(
+        { resourceId: resData.resourceId },
+        { $set: resData },
+        { upsert: true }
+      );
+    }
   }
 }
 
@@ -302,6 +447,7 @@ router.get('/', async (req, res) => {
       const nearestRescueTeam = annotated.find((r) => r.type === 'RESCUE_TEAM' && r.status === 'AVAILABLE') || null;
       const nearestHospital = annotated.find((r) => r.type === 'HOSPITAL') || null;
       const nearestShelter = annotated.find((r) => r.type === 'SHELTER') || null;
+      const nearestLandslideShelter = annotated.find((r) => r.type === 'SHELTER' && r.isLandslideSafe) || nearestShelter;
       const nearestBoat = annotated.find((r) => r.type === 'RESCUE_BOAT' && r.status === 'AVAILABLE') || null;
 
       return res.json({
@@ -312,6 +458,7 @@ router.get('/', async (req, res) => {
           nearestRescueTeam,
           nearestHospital,
           nearestShelter,
+          nearestLandslideShelter,
           nearestBoat,
         },
         resources: annotated,

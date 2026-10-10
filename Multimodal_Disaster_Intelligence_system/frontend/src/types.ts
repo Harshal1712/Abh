@@ -236,6 +236,11 @@ export interface EmergencyResource {
   } | null;
   speedKmh: number;
   equipment: string[];
+  driverName?: string;
+  driverPhone?: string;
+  vehicleNumber?: string;
+  elevationMeters?: number;
+  isLandslideSafe?: boolean;
   distanceKm?: number;
   etaMinutes?: number | null;
   deployedAt?: string | null;
