@@ -3,7 +3,8 @@ import {
   Layers, CheckSquare, Square, Target, Waves, MapPin, 
   Truck, ShieldAlert, HeartPulse, 
   Route, CheckCircle2, RotateCcw, AlertTriangle, 
-  Send, Compass, Phone, Sparkles
+  Send, Compass, Phone, Sparkles,
+  Minimize2, Maximize2
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMapEvents, ZoomControl, useMap } from 'react-leaflet';
 import { AmbulanceSimulationHUD, type SimulationState } from './AmbulanceSimulationHUD';
@@ -167,6 +168,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   });
 
   const [clickedPos, setClickedPos] = useState<{ lat: number; lng: number } | null>(null);
+  const [isLayerPanelMinimized, setIsLayerPanelMinimized] = useState<boolean>(false);
   const [resources, setResources] = useState<EmergencyResource[]>([]);
   const [resourceSummary, setResourceSummary] = useState<any>(null);
   const [evacRoutes, setEvacRoutes] = useState<any>(null);
@@ -461,45 +463,85 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
       {/* GIS & Logistics Layer Controls */}
       {showLayerControls && (
-        <div className="absolute bottom-4 left-3 z-[1000] w-[230px] max-w-[calc(100%-1.5rem)] bg-slate-900/90 backdrop-blur-md p-3.5 rounded-2xl border border-slate-700/60 shadow-2xl text-slate-200 text-xs">
-          <div className="flex items-center justify-between font-extrabold text-slate-300 mb-2 border-b border-slate-800 pb-1.5">
-            <span className="flex items-center gap-1.5 text-sky-400">
-              <Layers className="h-3.5 w-3.5" /> MAP LAYERS & LOGISTICS
+        isLayerPanelMinimized ? (
+          /* Minimized Compact Mode (Small - 1 Click To Expand) */
+          <button
+            type="button"
+            onClick={() => setIsLayerPanelMinimized(false)}
+            title="Click to expand Map Layers & Logistics"
+            className="absolute bottom-4 left-3 z-[1000] bg-slate-900/95 hover:bg-slate-850 backdrop-blur-md px-3 py-2 rounded-xl border border-sky-500/50 hover:border-sky-400 shadow-2xl text-slate-200 text-xs flex items-center gap-2.5 cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 group animate-in fade-in"
+          >
+            <span className="h-6 w-6 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0 group-hover:bg-sky-500/30 transition">
+              <Layers className="h-3.5 w-3.5" />
             </span>
-          </div>
-          <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1 custom-scroll">
-            {[
-              { id: 'ambulances', label: '🚑 Ambulances & Teams', color: 'text-rose-400' },
-              { id: 'hospitals', label: '🏥 Hospitals & Shelters', color: 'text-blue-400' },
-              { id: 'evacuationRoutes', label: '🛣️ Safe Evacuation Routes', color: 'text-emerald-400' },
-              { id: 'hazardRoads', label: '⛔ Hazard / Blocked Roads', color: 'text-amber-400' },
-              { id: 'responseRadius', label: '🎯 5km Response Radius', color: 'text-indigo-400' },
-              { id: 'baselineSusceptibility', label: '🛰️ Hazard Susceptibility', color: 'text-slate-300' },
-            ].map(item => (
-              <button
-                key={item.id}
-                onClick={() => toggleLayer(item.id)}
-                className="w-full flex items-center justify-between py-1 px-1.5 hover:bg-slate-800/80 rounded-lg transition text-[11px]"
-              >
-                <span className={`truncate font-semibold ${item.color}`}>{item.label}</span>
-                {layers[item.id] ? (
-                  <CheckSquare className="h-3.5 w-3.5 text-sky-400 shrink-0 ml-2" />
-                ) : (
-                  <Square className="h-3.5 w-3.5 text-slate-600 shrink-0 ml-2" />
-                )}
-              </button>
-            ))}
-          </div>
-          <div className="mt-2.5 pt-2 border-t border-slate-800 flex justify-between items-center text-[10px]">
-            <span className="text-slate-400">Assam Sector</span>
-            <button 
-              onClick={handleResetFleet}
-              className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 hover:underline"
+            <div className="flex flex-col text-left">
+              <span className="font-extrabold text-sky-400 text-[11px] leading-tight flex items-center gap-1.5">
+                MAP LAYERS
+                <span className="bg-sky-400/20 text-sky-300 text-[9px] font-black px-1.5 py-0.2 rounded-full">
+                  {Object.keys(layers).filter(k => layers[k]).length}
+                </span>
+              </span>
+              <span className="text-[9px] text-slate-400">Click to expand</span>
+            </div>
+            <Maximize2 className="h-3.5 w-3.5 text-slate-400 group-hover:text-sky-300 ml-1 transition" />
+          </button>
+        ) : (
+          /* Expanded Full Mode (As It Is Now - 1 Click To Make Small) */
+          <div className="absolute bottom-4 left-3 z-[1000] w-[230px] max-w-[calc(100%-1.5rem)] bg-slate-900/90 backdrop-blur-md p-3.5 rounded-2xl border border-slate-700/60 shadow-2xl text-slate-200 text-xs animate-in fade-in">
+            <div 
+              onClick={() => setIsLayerPanelMinimized(true)}
+              className="flex items-center justify-between font-extrabold text-slate-300 mb-2 border-b border-slate-800 pb-1.5 cursor-pointer select-none group"
+              title="Click to make small (1 click)"
             >
-              <RotateCcw className="h-2.5 w-2.5" /> Recall Fleet
-            </button>
+              <span className="flex items-center gap-1.5 text-sky-400 group-hover:text-sky-300 transition">
+                <Layers className="h-3.5 w-3.5" /> MAP LAYERS & LOGISTICS
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsLayerPanelMinimized(true);
+                }}
+                title="Make small (1 click)"
+                className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition flex items-center justify-center"
+              >
+                <Minimize2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1 custom-scroll">
+              {[
+                { id: 'ambulances', label: '🚑 Ambulances & Teams', color: 'text-rose-400' },
+                { id: 'hospitals', label: '🏥 Hospitals & Shelters', color: 'text-blue-400' },
+                { id: 'evacuationRoutes', label: '🛣️ Safe Evacuation Routes', color: 'text-emerald-400' },
+                { id: 'hazardRoads', label: '⛔ Hazard / Blocked Roads', color: 'text-amber-400' },
+                { id: 'responseRadius', label: '🎯 5km Response Radius', color: 'text-indigo-400' },
+                { id: 'baselineSusceptibility', label: '🛰️ Hazard Susceptibility', color: 'text-slate-300' },
+              ].map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => toggleLayer(item.id)}
+                  className="w-full flex items-center justify-between py-1 px-1.5 hover:bg-slate-800/80 rounded-lg transition text-[11px]"
+                >
+                  <span className={`truncate font-semibold ${item.color}`}>{item.label}</span>
+                  {layers[item.id] ? (
+                    <CheckSquare className="h-3.5 w-3.5 text-sky-400 shrink-0 ml-2" />
+                  ) : (
+                    <Square className="h-3.5 w-3.5 text-slate-600 shrink-0 ml-2" />
+                  )}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2.5 pt-2 border-t border-slate-800 flex justify-between items-center text-[10px]">
+              <span className="text-slate-400">Assam Sector</span>
+              <button 
+                onClick={handleResetFleet}
+                className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 hover:underline"
+              >
+                <RotateCcw className="h-2.5 w-2.5" /> Recall Fleet
+              </button>
+            </div>
           </div>
-        </div>
+        )
       )}
 
       {/* Main Leaflet Map */}
