@@ -14,14 +14,11 @@ import { CitizenPortalPage } from './pages/CitizenPortalPage';
 import { DispatchModal } from './components/common/DispatchModal';
 
 const MainLayout: React.FC = () => {
-  const { userRole, activeTab, dispatchModalData, setDispatchModalData, currentUser } = useApp();
-
-  const isAuthorizedExpert = currentUser && ['ADMIN', 'EXPERT', 'DISPATCHER', 'FIRST_RESPONDER'].includes(currentUser.role);
-  const effectiveRole = (userRole === 'EXPERT' && !isAuthorizedExpert) ? 'CITIZEN' : userRole;
+  const { userRole, activeTab, dispatchModalData, setDispatchModalData } = useApp();
 
   return (
     <>
-      {effectiveRole === 'CITIZEN' ? (
+      {userRole === 'CITIZEN' ? (
         <CitizenPortalPage />
       ) : (
         <div className="app-shell h-screen flex flex-col font-sans text-slate-300 selection:bg-sky-500/30 selection:text-white relative bg-[#0f172a] overflow-hidden">

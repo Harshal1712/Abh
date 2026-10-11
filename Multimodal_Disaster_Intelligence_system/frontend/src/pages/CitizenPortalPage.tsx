@@ -2295,10 +2295,11 @@ export const CitizenPortalPage: React.FC = () => {
                   <User className="h-3.5 w-3.5" /> Sign In / Register
                 </button>
                 <button 
-                  onClick={() => setAuthModalOpen(true)} 
+                  onClick={() => setUserRole('EXPERT')} 
                   className="hidden sm:flex items-center gap-1.5 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-xl border border-slate-300 shadow-2xs"
+                  title="Switch to Operations Console Command Center"
                 >
-                  <Shield className="h-3.5 w-3.5 text-indigo-600" /> Admin Access
+                  <Shield className="h-3.5 w-3.5 text-indigo-600" /> Operations Console
                 </button>
               </div>
             )}
@@ -2413,7 +2414,11 @@ export const CitizenPortalPage: React.FC = () => {
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
-        onLoginSuccess={() => {}}
+        onLoginSuccess={(user) => {
+          if (!user || user.role !== 'CITIZEN') {
+            setUserRole('EXPERT');
+          }
+        }}
       />
     </div>
   );

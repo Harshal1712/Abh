@@ -82,28 +82,33 @@ const STORAGE_KEYS = {
   THRESHOLDS: 'geovision_thresholds'
 };
 
+const DEFAULT_DEMO_ADMIN = {
+  id: 'USR-CMD-01',
+  name: 'Harsh',
+  email: 'harsh@resqgrid.com',
+  role: 'ADMIN',
+  area: 'Kamrup',
+  phone: '+91-9864112233'
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<any | null>(() => {
     try {
       const stored = localStorage.getItem('resqgrid_auth_user');
-      return stored ? JSON.parse(stored) : null;
+      return stored ? JSON.parse(stored) : DEFAULT_DEMO_ADMIN;
     } catch {
-      return null;
+      return DEFAULT_DEMO_ADMIN;
     }
   });
 
   const [userRole, setUserRoleState] = useState<UserRole>(() => {
     try {
-      const storedUser = localStorage.getItem('resqgrid_auth_user');
-      if (storedUser) {
-        const u = JSON.parse(storedUser);
-        if (['ADMIN', 'EXPERT', 'DISPATCHER', 'FIRST_RESPONDER'].includes(u.role)) {
-          const savedRole = localStorage.getItem(STORAGE_KEYS.ROLE) as UserRole;
-          return savedRole === 'CITIZEN' ? 'CITIZEN' : 'EXPERT';
-        }
+      const savedRole = localStorage.getItem(STORAGE_KEYS.ROLE) as UserRole;
+      if (savedRole === 'CITIZEN' || savedRole === 'EXPERT') {
+        return savedRole;
       }
     } catch {}
-    return 'CITIZEN';
+    return 'EXPERT';
   });
 
   const [activeTab, setActiveTabState] = useState<NavTab>(() => {
@@ -118,11 +123,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
-  // Sync role whenever currentUser changes: unauthenticated or citizen always forced to CITIZEN
+  // Sync role whenever currentUser changes
   useEffect(() => {
     if (!currentUser) {
-      setUserRoleState('CITIZEN');
-      localStorage.setItem(STORAGE_KEYS.ROLE, 'CITIZEN');
+      setUserRoleState('EXPERT');
+      localStorage.setItem(STORAGE_KEYS.ROLE, 'EXPERT');
     } else if (currentUser.role === 'CITIZEN') {
       setUserRoleState('CITIZEN');
       localStorage.setItem(STORAGE_KEYS.ROLE, 'CITIZEN');
