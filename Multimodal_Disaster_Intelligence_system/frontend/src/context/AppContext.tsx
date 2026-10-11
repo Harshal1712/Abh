@@ -208,7 +208,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return null;
       })
       .then(data => {
-        if (data && Array.isArray(data)) {
+        if (data && Array.isArray(data) && data.length > 0) {
           // Map MongoDB RiskEvents to our HazardEvent UI structure
           const mappedEvents: HazardEvent[] = data.map((item: any, idx: number) => ({
             id: item._id || `RAI-${idx}`,
@@ -340,7 +340,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return null;
       })
       .then(data => {
-        if (data && Array.isArray(data)) {
+        if (data && Array.isArray(data) && data.length > 0) {
           // Map MongoDB Alerts to our CommunityAlert UI structure
           const mappedAlerts: CommunityAlert[] = data.map((item: any) => {
             const hazardName = item.hazardType || item.hazard || 'Flood & Landslide';

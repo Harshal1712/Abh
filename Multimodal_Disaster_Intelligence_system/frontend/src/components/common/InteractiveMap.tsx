@@ -12,6 +12,7 @@ import { useApp } from '../../context/AppContext';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { HazardEvent, EmergencyResource } from '../../types';
+import { DEFAULT_RESOURCES } from '../../data/defaultResources';
 
 // Local inline SVG pin icon to eliminate external unpkg requests and Tracking Prevention warnings
 const defaultPinSvg = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="24" height="36"><path fill="%232563eb" stroke="%23ffffff" stroke-width="2" d="M12 0C5.37 0 0 5.37 0 12c0 9 12 24 12 24s12-15 12-24c0-6.63-5.37-12-12-12z"/><circle cx="12" cy="12" r="4.5" fill="%23ffffff"/></svg>';
@@ -332,7 +333,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   const [isLayerPanelMinimized, setIsLayerPanelMinimized] = useState<boolean>(true);
   const [isHeaderAlertOpen, setIsHeaderAlertOpen] = useState<boolean>(true);
   const [simRouteToFit, setSimRouteToFit] = useState<[number, number][] | null>(null);
-  const [resources, setResources] = useState<EmergencyResource[]>([]);
+  const [resources, setResources] = useState<EmergencyResource[]>(DEFAULT_RESOURCES);
   const [resourceSummary, setResourceSummary] = useState<any>(null);
   const [evacRoutes, setEvacRoutes] = useState<any>(null);
   const [dispatchedRoutes, setDispatchedRoutes] = useState<any[]>([]);
@@ -430,15 +431,39 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         ? `/api/resources?lat=${lat}&lng=${lng}`
         : '/api/resources';
       const res = await fetch(url);
-      if (res.ok) {
+      const isJson = res.headers.get('content-type')?.includes('application/json');
+      if (res.ok && isJson) {
         const data = await res.json();
-        setResources(data.resources || []);
-        if (data.summary) {
-          setResourceSummary(data.summary);
+        if (data.resources && data.resources.length > 0) {
+          setResources(data.resources);
+          if (data.summary) {
+            setResourceSummary(data.summary);
+          }
+          return;
         }
       }
     } catch (e) {
-      console.error('Failed to load emergency resources:', e);
+      console.warn('Backend resources offline, using local 24-fleet telemetry:', e);
+    }
+
+    // Static Vercel fallback: annotate DEFAULT_RESOURCES with distance
+    if (lat !== undefined && lng !== undefined) {
+      const annotated = DEFAULT_RESOURCES.map((r) => {
+        const distKm = Math.round(
+          Math.sqrt(
+            Math.pow((r.location.coordinates.lat - lat) * 111, 2) +
+            Math.pow((r.location.coordinates.lng - lng) * 105, 2)
+          ) * 10
+        ) / 10;
+        return {
+          ...r,
+          distanceKm: distKm,
+          etaMinutes: r.speedKmh > 0 ? Math.round((distKm / r.speedKmh) * 60) : null,
+        };
+      }).sort((a, b) => (a.distanceKm || 999) - (b.distanceKm || 999));
+      setResources(annotated);
+    } else {
+      setResources(DEFAULT_RESOURCES);
     }
   };
 
