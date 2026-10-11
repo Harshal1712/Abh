@@ -195,7 +195,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const fetchEventsFromServer = () => {
     fetch('/api/risk')
-      .then(res => res.json())
+      .then(res => {
+        const contentType = res.headers.get('content-type');
+        if (res.ok && contentType && contentType.includes('application/json')) {
+          return res.json();
+        }
+        return null;
+      })
       .then(data => {
         if (data && Array.isArray(data)) {
           // Map MongoDB RiskEvents to our HazardEvent UI structure
@@ -316,12 +322,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setEvents(mappedEvents);
         }
       })
-      .catch(e => console.error("Failed to fetch backend events:", e));
+      .catch(() => {});
   };
 
   const fetchAlertsFromServer = () => {
     fetch('/api/alerts')
-      .then(res => res.json())
+      .then(res => {
+        const contentType = res.headers.get('content-type');
+        if (res.ok && contentType && contentType.includes('application/json')) {
+          return res.json();
+        }
+        return null;
+      })
       .then(data => {
         if (data && Array.isArray(data)) {
           // Map MongoDB Alerts to our CommunityAlert UI structure
