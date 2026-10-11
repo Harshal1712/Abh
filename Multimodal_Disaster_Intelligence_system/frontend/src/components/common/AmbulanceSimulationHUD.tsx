@@ -102,6 +102,23 @@ export const AmbulanceSimulationHUD: React.FC<AmbulanceSimulationHUDProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 ml-1">
+            {/* Speed Pills in Minimized Bar */}
+            <div className="flex items-center bg-white/10 rounded-lg p-0.5 border border-white/10 text-[9px] font-bold">
+              {[0.25, 0.5, 1, 2].map((mult) => (
+                <button
+                  key={mult}
+                  onClick={() => onSpeedChange(mult)}
+                  className={`px-1.5 py-0.5 rounded transition ${
+                    sim.speedMultiplier === mult
+                      ? 'bg-indigo-600 text-white font-black'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {mult === 0.25 ? '0.25x' : mult === 0.5 ? '0.5x' : `${mult}x`}
+                </button>
+              ))}
+            </div>
+
             <button
               onClick={onPlayPause}
               className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition text-xs"
@@ -135,12 +152,12 @@ export const AmbulanceSimulationHUD: React.FC<AmbulanceSimulationHUDProps> = ({
   return (
     <aside
       aria-label="Simulation Aside"
-      className="absolute top-3 right-3 bottom-3 z-[2000] w-[380px] max-w-[calc(100%-1.5rem)] font-sans animate-in slide-in-from-right duration-300 pointer-events-auto flex flex-col"
+      className="absolute top-3 right-3 bottom-3 z-[2000] w-[350px] max-w-[calc(100%-1.5rem)] font-sans animate-in slide-in-from-right duration-300 pointer-events-auto flex flex-col shadow-2xl"
     >
       <div className="bg-slate-950/95 text-white rounded-2xl shadow-2xl border border-white/20 backdrop-blur-xl flex flex-col h-full overflow-hidden">
         
         {/* Top Header with Siren, Code 3 badge, Minimize & Close */}
-        <div className="p-3.5 border-b border-white/10 bg-slate-900/60 flex items-center justify-between shrink-0">
+        <div className="p-3 border-b border-white/10 bg-slate-900/60 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <span className="relative flex h-3.5 w-3.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
@@ -149,10 +166,10 @@ export const AmbulanceSimulationHUD: React.FC<AmbulanceSimulationHUDProps> = ({
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-black text-xs text-rose-400 uppercase tracking-wider">
-                  Live Travel Simulation
+                  Travel Simulation
                 </span>
                 <span className="bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full">
-                  CODE 3
+                  {sim.speedMultiplier}x CODE 3
                 </span>
               </div>
               <p className="text-[10px] text-slate-400 font-medium">Real-Time ORS Highway Dispatch</p>
@@ -162,10 +179,10 @@ export const AmbulanceSimulationHUD: React.FC<AmbulanceSimulationHUDProps> = ({
           <div className="flex items-center gap-1">
             <button
               onClick={() => setIsMinimized(true)}
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white transition"
-              title="Minimize to Compact Bar"
+              className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-sky-950/80 border border-sky-500/40 text-sky-300 hover:bg-sky-900/80 transition"
+              title="Minimize HUD to see unobstructed road map"
             >
-              <Minimize2 className="h-3.5 w-3.5" />
+              <Minimize2 className="h-3 w-3" /> Minimize
             </button>
             <button
               onClick={onClose}
@@ -315,17 +332,17 @@ export const AmbulanceSimulationHUD: React.FC<AmbulanceSimulationHUDProps> = ({
 
             {/* Speed Multiplier Pill */}
             <div className="flex items-center bg-white/10 rounded-xl p-0.5 border border-white/10 text-[10px] font-bold">
-              {[1, 2, 4].map((mult) => (
+              {[0.25, 0.5, 1, 2].map((mult) => (
                 <button
                   key={mult}
                   onClick={() => onSpeedChange(mult)}
                   className={`px-2 py-1 rounded-lg transition ${
                     sim.speedMultiplier === mult
-                      ? 'bg-indigo-600 text-white shadow'
+                      ? 'bg-indigo-600 text-white shadow font-black'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  {mult}x
+                  {mult === 0.25 ? '0.25x' : mult === 0.5 ? '0.5x' : `${mult}x`}
                 </button>
               ))}
             </div>

@@ -141,3 +141,9 @@
 .leaflet-container .event-map-popup .leaflet-popup-content {
   margin: 12px;
 }
+
+/* Ensure Leaflet divIcon containers render with transparent background and no default box border */
+.leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}

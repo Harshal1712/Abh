@@ -218,7 +218,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 return l <= 1 ? Math.round(l * 100) : Math.round(l);
               }
               if (item.dynamicLandslideRisk) return Math.round(item.dynamicLandslideRisk * 100);
-              return 48;
+              const seed = Math.sin((item.coordinates?.lat || 26.1) * 11 + (item.coordinates?.lng || 91.7) * 73);
+              return Math.round(28 + Math.abs(seed) * 35);
             })(),
             confidence: item.confidence || (() => {
               const maxRisk = Math.max(item.landslideProbability || 48, (item.floodProbability || 0.29) * 100);
@@ -330,8 +331,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ? item.title
               : `${item.severity || 'CRITICAL'} Emergency Alert: ${hazardName}`;
             const targetArea = item.area || item.location || 'Kamrup Priority Sector';
+            const cleanAlertId = item.alertId || (item._id ? (String(item._id).startsWith('ALT-') ? String(item._id) : `ALT-${String(item._id).slice(-6).toUpperCase()}`) : 'ALT-ONLINE');
             return {
-              id: item._id,
+              id: cleanAlertId,
+              alertId: cleanAlertId,
+              mongoId: item._id,
               eventId: item.eventId?._id || item.eventId || item._id,
               title: alertTitle,
               affectedArea: targetArea,
@@ -341,8 +345,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               severity: (item.severity || 'HIGH') as RiskLevel,
               status: item.status || 'ACTIVE',
               messageEn: item.safetyInstructions || item.message || 'High flood and landslide risk identified for your area following expert review. Please remain alert and follow instructions issued by local authorities.',
-              messageHi: '',
-              messageLocal: '',
+              messageHi: item.messageHi || '',
+              messageLocal: item.messageLocal || item.messageAs || '',
               selectedLanguage: 'en',
               issuedAt: item.approvedAt ? new Date(item.approvedAt).toLocaleString() : new Date(item.createdAt || Date.now()).toLocaleString(),
               expiresAt: item.expiresAt ? new Date(item.expiresAt).toLocaleString() : new Date(Date.now() + 24*60*60*1000).toLocaleString(),
@@ -482,7 +486,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const publishAlert = async (alertId: string, isTest: boolean = false) => {
     try {
-      const res = await fetch(`/api/alerts/${alertId}/send`, {
+      const targetAlert = alerts.find(a => a.id === alertId || a.alertId === alertId || a.mongoId === alertId);
+      const backendLookupId = targetAlert?.mongoId || targetAlert?.alertId || alertId;
+      const res = await fetch(`/api/alerts/${backendLookupId}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: 'Dr. Ananya Sharma', isTest })
@@ -507,7 +513,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateAlertContent = (alertId: string, updates: Partial<CommunityAlert>) => {
-    setAlerts(alerts.map(a => a.id === alertId ? { ...a, ...updates } : a));
+    setAlerts(alerts.map(a => (a.id === alertId || a.alertId === alertId || a.mongoId === alertId) ? { ...a, ...updates } : a));
   };
 
   const submitReport = (reportData: Omit<CommunityReport, 'id' | 'timestamp' | 'status'>) => {

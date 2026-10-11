@@ -139,7 +139,7 @@ export const AlertManagementPage: React.FC = () => {
                   }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-mono text-xs font-bold text-slate-500">{alt.id}</span>
+                  <span className="font-mono text-xs font-bold text-slate-500">{alt.alertId || alt.id}</span>
                   <RiskBadge level={alt.severity} size="sm" pulse={alt.severity === 'CRITICAL'} />
                 </div>
                 <h4 className="font-bold text-sm text-slate-900 mb-1">{alt.title}</h4>
@@ -169,7 +169,7 @@ export const AlertManagementPage: React.FC = () => {
               {/* Alert Header Summary */}
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
                 <div>
-                  <span className="font-mono text-xs text-slate-400 font-bold block">ALERT DOSSIER ID: {currentAlert.id}</span>
+                  <span className="font-mono text-xs text-slate-400 font-bold block">ALERT DOSSIER ID: {currentAlert.alertId || currentAlert.id}</span>
                   <h3 className="text-lg font-black text-slate-900">{currentAlert.title?.replace('undefined', 'Flood & Landslide') || 'Moderate Flood & Landslide Alert'}</h3>
                 </div>
 

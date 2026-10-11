@@ -125,6 +125,8 @@ export interface HazardEvent {
 
 export interface CommunityAlert {
   id: string;
+  alertId?: string;
+  mongoId?: string;
   eventId: string;
   title: string;
   affectedArea: string;

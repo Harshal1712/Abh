@@ -20,7 +20,7 @@ function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
 // Generate interpolated waypoint coordinates for emergency route visualization
 function generateRoutePath(start: [number, number], end: [number, number], detourFactor: number = 0): [number, number][] {
   const points: [number, number][] = [];
-  const steps = 14;
+  const steps = 26;
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     // Linear interpolation

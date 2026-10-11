@@ -4,12 +4,19 @@ import {
   Crosshair, AlertOctagon, Clock, ChevronRight, ShieldCheck, Route,
   User, LogOut, Shield, Volume2, VolumeX, PhoneCall, Sparkles, Brain, CheckCircle, XCircle,
   RefreshCw, Radio, Building2, Mountain, Navigation,
-  ExternalLink, ShieldAlert, Truck
+  ExternalLink, ShieldAlert, Truck, Languages
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AuthModal } from '../components/common/AuthModal';
 import type { HazardType, RiskLevel, CommunityAlert, ReportAiAnalysis } from '../types';
 import { validateCommunityReportClientSide } from '../utils/aiReportValidator';
+import {
+  type AlertLanguage,
+  ALERT_LANGUAGES,
+  getMultilingualAlertDetails,
+  playAlertSpeechBroadcast,
+  stopAlertSpeechBroadcast,
+} from '../utils/multilingualAlerts';
 import exifr from 'exifr';
 
 // ==============================================================
@@ -40,6 +47,8 @@ export const CitizenPortalPage: React.FC = () => {
   // Audio Speech Warning State
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioAlertId, setAudioAlertId] = useState<string | null>(null);
+  const [audioAlertLang, setAudioAlertLang] = useState<AlertLanguage | null>(null);
+  const [cardLangMap, setCardLangMap] = useState<Record<string, AlertLanguage>>({});
 
   // Form State for Report
   const [hazardType, setHazardType] = useState<HazardType>('FLOOD'); 
@@ -205,50 +214,44 @@ export const CitizenPortalPage: React.FC = () => {
   // Clean up audio speech on unmount
   useEffect(() => {
     return () => {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      stopAlertSpeechBroadcast();
     };
   }, []);
 
-  const handleSpeechBroadcast = (alertItem: CommunityAlert) => {
-    if (!window.speechSynthesis) {
-      alert("Text-to-speech audio broadcast is not supported in this browser.");
+  const handleSpeechBroadcast = (alertItem: CommunityAlert, lang: AlertLanguage = 'en') => {
+    const alertKey = alertItem.alertId || alertItem.id;
+    if (isPlayingAudio && audioAlertId === alertKey && audioAlertLang === lang) {
+      stopAlertSpeechBroadcast();
+      setIsPlayingAudio(false);
+      setAudioAlertId(null);
+      setAudioAlertLang(null);
       return;
     }
 
-    if (isPlayingAudio && audioAlertId === alertItem.id) {
-      window.speechSynthesis.cancel();
-      setIsPlayingAudio(false);
-      setAudioAlertId(null);
-      return;
-    }
+    playAlertSpeechBroadcast(alertItem, lang, {
+      onStart: () => {
+        setIsPlayingAudio(true);
+        setAudioAlertId(alertKey);
+        setAudioAlertLang(lang);
+      },
+      onEnd: () => {
+        setIsPlayingAudio(false);
+        setAudioAlertId(null);
+        setAudioAlertLang(null);
+      },
+      onError: () => {
+        setIsPlayingAudio(false);
+        setAudioAlertId(null);
+        setAudioAlertLang(null);
+      },
+    });
+  };
 
-    window.speechSynthesis.cancel();
-
-    const textToSpeak = `Official Emergency Broadcast. Severity: ${alertItem.severity}. Hazard: ${alertItem.hazardType}. Location: ${alertItem.affectedArea}. Attention all residents: ${alertItem.messageEn || alertItem.safetyInstructions}. Designated safe shelter is ${alertItem.shelterRecommendation || 'Kamrup Multi Purpose Relief Shelter'}. Safe evacuation route: ${alertItem.routeAdvice || 'State Highway 12 Highland Bypass'}. Move to higher ground immediately.`;
-
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.rate = 0.95;
-    utterance.pitch = 1.05;
-    utterance.lang = 'en-IN';
-
-    utterance.onstart = () => {
-      setIsPlayingAudio(true);
-      setAudioAlertId(alertItem.id);
-    };
-
-    utterance.onend = () => {
-      setIsPlayingAudio(false);
-      setAudioAlertId(null);
-    };
-
-    utterance.onerror = () => {
-      setIsPlayingAudio(false);
-      setAudioAlertId(null);
-    };
-
-    window.speechSynthesis.speak(utterance);
+  const handleStopSpeech = () => {
+    stopAlertSpeechBroadcast();
+    setIsPlayingAudio(false);
+    setAudioAlertId(null);
+    setAudioAlertLang(null);
   };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -986,103 +989,203 @@ export const CitizenPortalPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            {displayAlerts.map((alert) => (
-              <div 
-                key={alert.id}
-                className="group relative overflow-hidden rounded-2xl border-2 border-red-200/90 bg-white p-5 sm:p-6 shadow-sm hover:shadow-md transition"
-              >
-                {/* Glowing alert accent */}
-                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-orange-500 to-indigo-600" />
+            {displayAlerts.map((alert) => {
+              const alertKey = alert.alertId || alert.id;
+              const currentLang = cardLangMap[alertKey] || 'en';
+              const localized = getMultilingualAlertDetails(alert, currentLang);
+              const isBroadcastingThis = isPlayingAudio && audioAlertId === alertKey;
 
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black tracking-wider uppercase border ${getRiskBadgeStyles(alert.severity)}`}>
-                      <span className="h-2 w-2 rounded-full bg-red-600 animate-ping" />
-                      {alert.severity} RISK • {alert.hazardType}
-                    </span>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600 border border-slate-200">
-                      ID: {alert.id}
-                    </span>
-                  </div>
+              return (
+                <div 
+                  key={alertKey}
+                  className="group relative overflow-hidden rounded-2xl border-2 border-red-200/90 bg-white p-5 sm:p-6 shadow-sm hover:shadow-md transition"
+                >
+                  {/* Glowing alert accent */}
+                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-orange-500 to-indigo-600" />
 
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Clock className="h-3.5 w-3.5 text-slate-400" />
-                    <span>{alert.issuedAt || 'Active Now'}</span>
-                  </div>
-                </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black tracking-wider uppercase border ${getRiskBadgeStyles(alert.severity)}`}>
+                        <span className="h-2 w-2 rounded-full bg-red-600 animate-ping" />
+                        {localized.severity} • {localized.hazardType}
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-700 border border-slate-200 font-mono">
+                        ID: {alertKey}
+                      </span>
+                    </div>
 
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mb-2 group-hover:text-red-600 transition">
-                  {alert.title}
-                </h3>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      {/* Text Language Switcher Pill */}
+                      <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-100 border border-slate-200 text-[10px] font-bold">
+                        <span className="px-2 py-0.5 text-slate-400 flex items-center gap-1">
+                          <Languages className="h-3 w-3" /> Lang:
+                        </span>
+                        {ALERT_LANGUAGES.map((l) => (
+                          <button
+                            key={l.id}
+                            type="button"
+                            onClick={() => setCardLangMap(prev => ({ ...prev, [alertKey]: l.id }))}
+                            className={`px-2 py-0.5 rounded-lg transition font-bold ${
+                              currentLang === l.id
+                                ? 'bg-white text-indigo-700 shadow-2xs font-extrabold'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                            title={`Switch card text to ${l.label}`}
+                          >
+                            {l.flag} {l.native}
+                          </button>
+                        ))}
+                      </div>
 
-                <p className="text-sm font-medium leading-relaxed text-slate-700 mb-4 bg-slate-50 border border-slate-200 rounded-xl p-4">
-                  {alert.messageEn || alert.safetyInstructions}
-                </p>
-
-                {/* Rich Emergency Details: Shelter, Route, Travel */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-xs">
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-emerald-900 flex items-start gap-2.5">
-                    <Building2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-black block uppercase tracking-wider text-[10px] text-emerald-800">Designated Safe Shelter</span>
-                      <p className="font-bold text-emerald-950 mt-0.5">{alert.shelterRecommendation || 'Kamrup Multi-Purpose Relief Shelter'}</p>
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                        <Clock className="h-3.5 w-3.5 text-slate-400" />
+                        <span>{alert.issuedAt || 'Active Now'}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-3.5 text-sky-900 flex items-start gap-2.5">
-                    <Route className="h-4 w-4 text-sky-600 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-black block uppercase tracking-wider text-[10px] text-sky-800">Recommended Evacuation Route</span>
-                      <p className="font-bold text-sky-950 mt-0.5">{alert.routeAdvice || 'SH-12 Highland Transit Bypass Corridor'}</p>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mb-2 group-hover:text-red-600 transition">
+                    {localized.title}
+                  </h3>
+
+                  <p className="text-sm font-medium leading-relaxed text-slate-700 mb-4 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    {localized.message}
+                  </p>
+
+                  {/* Rich Emergency Details: Shelter, Route, Travel */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-xs">
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-emerald-900 flex items-start gap-2.5">
+                      <Building2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-black block uppercase tracking-wider text-[10px] text-emerald-800">Designated Safe Shelter</span>
+                        <p className="font-bold text-emerald-950 mt-0.5">{localized.shelter}</p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-3.5 text-sky-900 flex items-start gap-2.5">
+                      <Route className="h-4 w-4 text-sky-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-black block uppercase tracking-wider text-[10px] text-sky-800">Recommended Evacuation Route</span>
+                        <p className="font-bold text-sky-950 mt-0.5">{localized.route}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {localized.travelAdvisory && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900 mb-4 flex items-center gap-2">
+                      <AlertOctagon className="h-4 w-4 text-amber-600 shrink-0" />
+                      <span><strong>Transit Advisory:</strong> {localized.travelAdvisory}</span>
+                    </div>
+                  )}
+
+                  {/* Active Broadcasting Status Indicator */}
+                  {isBroadcastingThis && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between text-xs text-red-700 animate-pulse shadow-xs">
+                      <div className="flex items-center gap-2 font-black">
+                        <Volume2 className="h-4 w-4 text-red-600 animate-bounce" />
+                        <span>Audio Broadcast Active ({audioAlertLang === 'hi' ? '🇮🇳 हिन्दी (Hindi)' : audioAlertLang === 'as' ? '🌾 অসমীয়া (Assamese)' : '🇬🇧 English'})...</span>
+                      </div>
+                      <button
+                        onClick={handleStopSpeech}
+                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-black transition flex items-center gap-1 shadow-sm"
+                      >
+                        <VolumeX className="h-3.5 w-3.5" /> Stop Siren
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Card Action Bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                      <MapPin className="h-4 w-4 text-red-500" />
+                      <span>{alert.affectedArea || alert.location}</span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Multi-Language Listen Audio Warning Options */}
+                      <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200">
+                        <span className="text-[10px] font-black uppercase text-slate-500 px-2 flex items-center gap-1">
+                          <Volume2 className="h-3.5 w-3.5 text-indigo-600" /> Listen:
+                        </span>
+
+                        {/* English audio button */}
+                        <button
+                          type="button"
+                          onClick={() => handleSpeechBroadcast(alert, 'en')}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                            isBroadcastingThis && audioAlertLang === 'en'
+                              ? 'bg-red-600 text-white animate-pulse ring-2 ring-red-400 shadow-sm'
+                              : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 shadow-2xs'
+                          }`}
+                          title="Listen in English"
+                        >
+                          {isBroadcastingThis && audioAlertLang === 'en' ? (
+                            <>
+                              <VolumeX className="h-3 w-3" /> Stop EN
+                            </>
+                          ) : (
+                            <>
+                              <span>🇬🇧</span> English
+                            </>
+                          )}
+                        </button>
+
+                        {/* Hindi audio button */}
+                        <button
+                          type="button"
+                          onClick={() => handleSpeechBroadcast(alert, 'hi')}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                            isBroadcastingThis && audioAlertLang === 'hi'
+                              ? 'bg-red-600 text-white animate-pulse ring-2 ring-red-400 shadow-sm'
+                              : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 shadow-2xs'
+                          }`}
+                          title="Listen in Hindi (हिन्दी)"
+                        >
+                          {isBroadcastingThis && audioAlertLang === 'hi' ? (
+                            <>
+                              <VolumeX className="h-3 w-3" /> Stop हिन्दी
+                            </>
+                          ) : (
+                            <>
+                              <span>🇮🇳</span> हिन्दी
+                            </>
+                          )}
+                        </button>
+
+                        {/* Assamese audio button */}
+                        <button
+                          type="button"
+                          onClick={() => handleSpeechBroadcast(alert, 'as')}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                            isBroadcastingThis && audioAlertLang === 'as'
+                              ? 'bg-red-600 text-white animate-pulse ring-2 ring-red-400 shadow-sm'
+                              : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 shadow-2xs'
+                          }`}
+                          title="Listen in Assamese (অসমীয়া)"
+                        >
+                          {isBroadcastingThis && audioAlertLang === 'as' ? (
+                            <>
+                              <VolumeX className="h-3 w-3" /> Stop অসমীয়া
+                            </>
+                          ) : (
+                            <>
+                              <span>🌾</span> অসমীয়া
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => setSelectedAlert(alert)}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2 text-xs font-bold text-white transition shadow-sm"
+                      >
+                        Full Advisory <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
                 </div>
-
-                {alert.travelAdvisory && (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900 mb-4 flex items-center gap-2">
-                    <AlertOctagon className="h-4 w-4 text-amber-600 shrink-0" />
-                    <span><strong>Transit Advisory:</strong> {alert.travelAdvisory}</span>
-                  </div>
-                )}
-
-                {/* Card Action Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                    <MapPin className="h-4 w-4 text-red-500" />
-                    <span>{alert.affectedArea || alert.location}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {/* Voice Siren Broadcast Button */}
-                    <button
-                      onClick={() => handleSpeechBroadcast(alert)}
-                      className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition shadow-2xs ${
-                        isPlayingAudio && audioAlertId === alert.id
-                          ? 'bg-red-600 text-white animate-pulse ring-2 ring-red-400'
-                          : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200'
-                      }`}
-                    >
-                      {isPlayingAudio && audioAlertId === alert.id ? (
-                        <>
-                          <VolumeX className="h-3.5 w-3.5" /> Stop Voice Siren
-                        </>
-                      ) : (
-                        <>
-                          <Volume2 className="h-3.5 w-3.5 text-indigo-600" /> Listen to Audio Warning
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      onClick={() => setSelectedAlert(alert)}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2 text-xs font-bold text-white transition shadow-sm"
-                    >
-                      Full Advisory <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : (
@@ -1216,76 +1319,194 @@ export const CitizenPortalPage: React.FC = () => {
       </div>
 
       <div className="space-y-4">
-        {displayAlerts.map((alert) => (
-          <div 
-            key={alert.id}
-            className="rounded-2xl border-2 border-red-200 bg-white p-5 sm:p-6 shadow-sm hover:shadow-md transition"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider border ${getRiskBadgeStyles(alert.severity)}`}>
-                <span className="h-2 w-2 rounded-full bg-red-600 animate-ping" />
-                {alert.severity} • {alert.hazardType}
-              </span>
-              <span className="text-xs font-mono text-slate-500 flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" /> Issued: {alert.issuedAt || 'Active Now'}
-              </span>
-            </div>
+        {displayAlerts.map((alert) => {
+          const alertKey = alert.alertId || alert.id;
+          const currentLang = cardLangMap[alertKey] || 'en';
+          const localized = getMultilingualAlertDetails(alert, currentLang);
+          const isBroadcastingThis = isPlayingAudio && audioAlertId === alertKey;
 
-            <h3 className="text-xl font-black text-slate-900 mb-2">{alert.title}</h3>
-            
-            <p className="text-sm font-medium text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
-              {alert.messageEn || alert.safetyInstructions}
-            </p>
+          return (
+            <div 
+              key={alertKey}
+              className="rounded-2xl border-2 border-red-200 bg-white p-5 sm:p-6 shadow-sm hover:shadow-md transition relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-orange-500 to-indigo-600" />
 
-            {/* Key Directive Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 text-xs">
-              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 block mb-1">Target Sector</span>
-                <span className="font-bold text-slate-900 flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5 text-red-500 shrink-0" /> {alert.affectedArea || alert.location}
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider border ${getRiskBadgeStyles(alert.severity)}`}>
+                    <span className="h-2 w-2 rounded-full bg-red-600 animate-ping" />
+                    {localized.severity} • {localized.hazardType}
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-700 border border-slate-200 font-mono">
+                    ID: {alertKey}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Language switch */}
+                  <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-100 border border-slate-200 text-[10px] font-bold">
+                    <span className="px-2 py-0.5 text-slate-400 flex items-center gap-1">
+                      <Languages className="h-3 w-3" /> Lang:
+                    </span>
+                    {ALERT_LANGUAGES.map((l) => (
+                      <button
+                        key={l.id}
+                        type="button"
+                        onClick={() => setCardLangMap(prev => ({ ...prev, [alertKey]: l.id }))}
+                        className={`px-2 py-0.5 rounded-lg transition font-bold ${
+                          currentLang === l.id
+                            ? 'bg-white text-indigo-700 shadow-2xs font-extrabold'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                        title={`Switch card text to ${l.label}`}
+                      >
+                        {l.flag} {l.native}
+                      </button>
+                    ))}
+                  </div>
+
+                  <span className="text-xs font-mono text-slate-500 flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" /> Issued: {alert.issuedAt || 'Active Now'}
+                  </span>
+                </div>
+              </div>
+
+              <h3 className="text-xl font-black text-slate-900 mb-2">{localized.title}</h3>
+              
+              <p className="text-sm font-medium text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+                {localized.message}
+              </p>
+
+              {/* Key Directive Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 text-xs">
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 block mb-1">Target Sector</span>
+                  <span className="font-bold text-slate-900 flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5 text-red-500 shrink-0" /> {alert.affectedArea || alert.location}
+                  </span>
+                </div>
+                <div className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-200">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 block mb-1">Evacuation Shelter</span>
+                  <span className="font-bold text-emerald-950 flex items-center gap-1">
+                    <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> {localized.shelter}
+                  </span>
+                </div>
+                <div className="bg-sky-50 p-3.5 rounded-xl border border-sky-200">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-sky-800 block mb-1">Safe Evacuation Route</span>
+                  <span className="font-bold text-sky-950 flex items-center gap-1">
+                    <Route className="h-3.5 w-3.5 text-sky-600 shrink-0" /> {localized.route}
+                  </span>
+                </div>
+              </div>
+
+              {/* Active Audio Broadcast Banner */}
+              {isBroadcastingThis && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between text-xs text-red-700 animate-pulse shadow-xs">
+                  <div className="flex items-center gap-2 font-black">
+                    <Volume2 className="h-4 w-4 text-red-600 animate-bounce" />
+                    <span>Audio Broadcast Active ({audioAlertLang === 'hi' ? '🇮🇳 हिन्दी (Hindi)' : audioAlertLang === 'as' ? '🌾 অসমীয়া (Assamese)' : '🇬🇧 English'})...</span>
+                  </div>
+                  <button
+                    onClick={handleStopSpeech}
+                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-black transition flex items-center gap-1 shadow-sm"
+                  >
+                    <VolumeX className="h-3.5 w-3.5" /> Stop Siren
+                  </button>
+                </div>
+              )}
+
+              {/* Action Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                <span className="text-xs text-slate-500">
+                  Authorized By: <strong className="text-slate-800">{alert.approvedBy || 'Assam SDMA'}</strong>
                 </span>
-              </div>
-              <div className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-200">
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 block mb-1">Evacuation Shelter</span>
-                <span className="font-bold text-emerald-950 flex items-center gap-1">
-                  <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> {alert.shelterRecommendation || 'Kamrup District Relief Hub'}
-                </span>
-              </div>
-              <div className="bg-sky-50 p-3.5 rounded-xl border border-sky-200">
-                <span className="text-[10px] font-black uppercase tracking-wider text-sky-800 block mb-1">Safe Evacuation Route</span>
-                <span className="font-bold text-sky-950 flex items-center gap-1">
-                  <Route className="h-3.5 w-3.5 text-sky-600 shrink-0" /> {alert.routeAdvice || 'SH-12 Highland Bypass'}
-                </span>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Multi-Language Listen Audio Warning Options */}
+                  <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200">
+                    <span className="text-[10px] font-black uppercase text-slate-500 px-2 flex items-center gap-1">
+                      <Volume2 className="h-3.5 w-3.5 text-indigo-600" /> Listen:
+                    </span>
+
+                    {/* English */}
+                    <button
+                      type="button"
+                      onClick={() => handleSpeechBroadcast(alert, 'en')}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                        isBroadcastingThis && audioAlertLang === 'en'
+                          ? 'bg-red-600 text-white animate-pulse ring-2 ring-red-400 shadow-sm'
+                          : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 shadow-2xs'
+                      }`}
+                      title="Listen in English"
+                    >
+                      {isBroadcastingThis && audioAlertLang === 'en' ? (
+                        <>
+                          <VolumeX className="h-3 w-3" /> Stop EN
+                        </>
+                      ) : (
+                        <>
+                          <span>🇬🇧</span> English
+                        </>
+                      )}
+                    </button>
+
+                    {/* Hindi */}
+                    <button
+                      type="button"
+                      onClick={() => handleSpeechBroadcast(alert, 'hi')}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                        isBroadcastingThis && audioAlertLang === 'hi'
+                          ? 'bg-red-600 text-white animate-pulse ring-2 ring-red-400 shadow-sm'
+                          : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 shadow-2xs'
+                      }`}
+                      title="Listen in Hindi (हिन्दी)"
+                    >
+                      {isBroadcastingThis && audioAlertLang === 'hi' ? (
+                        <>
+                          <VolumeX className="h-3 w-3" /> Stop हिन्दी
+                        </>
+                      ) : (
+                        <>
+                          <span>🇮🇳</span> हिन्दी
+                        </>
+                      )}
+                    </button>
+
+                    {/* Assamese */}
+                    <button
+                      type="button"
+                      onClick={() => handleSpeechBroadcast(alert, 'as')}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                        isBroadcastingThis && audioAlertLang === 'as'
+                          ? 'bg-red-600 text-white animate-pulse ring-2 ring-red-400 shadow-sm'
+                          : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 shadow-2xs'
+                      }`}
+                      title="Listen in Assamese (অসমীয়া)"
+                    >
+                      {isBroadcastingThis && audioAlertLang === 'as' ? (
+                        <>
+                          <VolumeX className="h-3 w-3" /> Stop অসমীয়া
+                        </>
+                      ) : (
+                        <>
+                          <span>🌾</span> অসমীয়া
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => setSelectedAlert(alert)}
+                    className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2 text-xs font-bold text-white transition shadow-sm"
+                  >
+                    View Complete Details <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
-
-            {/* Action Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
-              <span className="text-xs text-slate-500">
-                Authorized By: <strong className="text-slate-800">{alert.approvedBy || 'Assam SDMA'}</strong>
-              </span>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleSpeechBroadcast(alert)}
-                  className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
-                    isPlayingAudio && audioAlertId === alert.id
-                      ? 'bg-red-600 text-white animate-pulse'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200'
-                  }`}
-                >
-                  <Volume2 className="h-3.5 w-3.5 text-indigo-600" /> Voice Siren
-                </button>
-                <button
-                  onClick={() => setSelectedAlert(alert)}
-                  className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2 text-xs font-bold text-white transition shadow-sm"
-                >
-                  View Complete Details <ChevronRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -1781,33 +2002,68 @@ export const CitizenPortalPage: React.FC = () => {
   const renderAlertDetailModal = () => {
     if (!selectedAlert) return null;
 
+    const alertKey = selectedAlert.alertId || selectedAlert.id;
+    const currentLang = cardLangMap[alertKey] || 'en';
+    const localized = getMultilingualAlertDetails(selectedAlert, currentLang);
+    const isBroadcastingThis = isPlayingAudio && audioAlertId === alertKey;
+
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
         <div className="relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-2xl text-slate-800 my-8">
           <div className="flex justify-between items-start mb-4 pb-4 border-b border-slate-200">
             <div>
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider border ${getRiskBadgeStyles(selectedAlert.severity)}`}>
-                <span className="h-2 w-2 rounded-full bg-red-600 animate-ping" />
-                {selectedAlert.severity} • {selectedAlert.hazardType}
-              </span>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-2">{selectedAlert.title}</h2>
+              <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider border ${getRiskBadgeStyles(selectedAlert.severity)}`}>
+                  <span className="h-2 w-2 rounded-full bg-red-600 animate-ping" />
+                  {localized.severity} • {localized.hazardType}
+                </span>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-700 border border-slate-200 font-mono">
+                  ID: {alertKey}
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-2">{localized.title}</h2>
               <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 text-red-500" /> {selectedAlert.affectedArea || selectedAlert.location}
               </p>
             </div>
-            <button
-              onClick={() => setSelectedAlert(null)}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition"
-            >
-              ✕
-            </button>
+
+            <div className="flex items-center gap-2">
+              {/* Language Switcher */}
+              <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-100 border border-slate-200 text-[10px] font-bold">
+                <span className="px-2 py-0.5 text-slate-400 flex items-center gap-1">
+                  <Languages className="h-3 w-3" />
+                </span>
+                {ALERT_LANGUAGES.map((l) => (
+                  <button
+                    key={l.id}
+                    type="button"
+                    onClick={() => setCardLangMap(prev => ({ ...prev, [alertKey]: l.id }))}
+                    className={`px-2 py-0.5 rounded-lg transition font-bold ${
+                      currentLang === l.id
+                        ? 'bg-white text-indigo-700 shadow-2xs font-extrabold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                    title={`Switch modal text to ${l.label}`}
+                  >
+                    {l.flag} {l.native}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setSelectedAlert(null)}
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           <div className="space-y-4 text-sm">
             <div>
               <h4 className="text-xs font-black uppercase tracking-wider text-red-700 mb-1">Emergency Warning & Directive</h4>
               <p className="text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-200 leading-relaxed font-medium">
-                {selectedAlert.messageEn || selectedAlert.safetyInstructions}
+                {localized.message}
               </p>
             </div>
 
@@ -1816,20 +2072,36 @@ export const CitizenPortalPage: React.FC = () => {
                 <strong className="block font-black uppercase tracking-wider text-emerald-800 text-[10px] mb-1">
                   Designated Safe Shelter
                 </strong>
-                {selectedAlert.shelterRecommendation || 'Kamrup Multi-Purpose Relief Center'}
+                {localized.shelter}
               </div>
 
               <div className="p-3.5 rounded-xl border border-sky-200 bg-sky-50 text-sky-900">
                 <strong className="block font-black uppercase tracking-wider text-sky-800 text-[10px] mb-1">
                   Designated Evacuation Corridor
                 </strong>
-                {selectedAlert.routeAdvice || 'State Highway 12 Highland Bypass'}
+                {localized.route}
               </div>
             </div>
 
-            {selectedAlert.travelAdvisory && (
+            {localized.travelAdvisory && (
               <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-xs">
-                <strong>Travel Advisory:</strong> {selectedAlert.travelAdvisory}
+                <strong>Travel Advisory:</strong> {localized.travelAdvisory}
+              </div>
+            )}
+
+            {/* Active Audio Broadcast Banner */}
+            {isBroadcastingThis && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between text-xs text-red-700 animate-pulse shadow-xs">
+                <div className="flex items-center gap-2 font-black">
+                  <Volume2 className="h-4 w-4 text-red-600 animate-bounce" />
+                  <span>Voice Siren Active ({audioAlertLang === 'hi' ? '🇮🇳 हिन्दी (Hindi)' : audioAlertLang === 'as' ? '🌾 অসমীয়া (Assamese)' : '🇬🇧 English'})...</span>
+                </div>
+                <button
+                  onClick={handleStopSpeech}
+                  className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-black transition flex items-center gap-1 shadow-sm"
+                >
+                  <VolumeX className="h-3.5 w-3.5" /> Stop Siren
+                </button>
               </div>
             )}
 
@@ -1847,13 +2119,79 @@ export const CitizenPortalPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-between gap-3">
-            <button
-              onClick={() => handleSpeechBroadcast(selectedAlert)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 px-4 py-2 text-xs font-bold text-slate-800 border border-slate-200"
-            >
-              <Volume2 className="h-4 w-4 text-indigo-600" /> Listen to Audio Warning
-            </button>
+          <div className="mt-6 pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            {/* Multi-Language Listen Audio Warning Options */}
+            <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200">
+              <span className="text-[10px] font-black uppercase text-slate-500 px-2 flex items-center gap-1">
+                <Volume2 className="h-3.5 w-3.5 text-indigo-600" /> Listen:
+              </span>
+
+              {/* English */}
+              <button
+                type="button"
+                onClick={() => handleSpeechBroadcast(selectedAlert, 'en')}
+                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  isBroadcastingThis && audioAlertLang === 'en'
+                    ? 'bg-red-600 text-white animate-pulse ring-2 ring-red-400 shadow-sm'
+                    : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 shadow-2xs'
+                }`}
+                title="Listen in English"
+              >
+                {isBroadcastingThis && audioAlertLang === 'en' ? (
+                  <>
+                    <VolumeX className="h-3 w-3" /> Stop EN
+                  </>
+                ) : (
+                  <>
+                    <span>🇬🇧</span> English
+                  </>
+                )}
+              </button>
+
+              {/* Hindi */}
+              <button
+                type="button"
+                onClick={() => handleSpeechBroadcast(selectedAlert, 'hi')}
+                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  isBroadcastingThis && audioAlertLang === 'hi'
+                    ? 'bg-red-600 text-white animate-pulse ring-2 ring-red-400 shadow-sm'
+                    : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 shadow-2xs'
+                }`}
+                title="Listen in Hindi (हिन्दी)"
+              >
+                {isBroadcastingThis && audioAlertLang === 'hi' ? (
+                  <>
+                    <VolumeX className="h-3 w-3" /> Stop हिन्दी
+                  </>
+                ) : (
+                  <>
+                    <span>🇮🇳</span> हिन्दी
+                  </>
+                )}
+              </button>
+
+              {/* Assamese */}
+              <button
+                type="button"
+                onClick={() => handleSpeechBroadcast(selectedAlert, 'as')}
+                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  isBroadcastingThis && audioAlertLang === 'as'
+                    ? 'bg-red-600 text-white animate-pulse ring-2 ring-red-400 shadow-sm'
+                    : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 shadow-2xs'
+                }`}
+                title="Listen in Assamese (অসমীয়া)"
+              >
+                {isBroadcastingThis && audioAlertLang === 'as' ? (
+                  <>
+                    <VolumeX className="h-3 w-3" /> Stop অসমীয়া
+                  </>
+                ) : (
+                  <>
+                    <span>🌾</span> অসমীয়া
+                  </>
+                )}
+              </button>
+            </div>
 
             <button
               onClick={() => setSelectedAlert(null)}
