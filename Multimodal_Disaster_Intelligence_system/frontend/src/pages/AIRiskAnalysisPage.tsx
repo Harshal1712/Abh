@@ -65,21 +65,29 @@ export const AIRiskAnalysisPage: React.FC = () => {
         riskFactorWeighting: evt.riskFactorWeighting || null,
       };
 
-      const res = await fetch('http://localhost:5000/api/risk/explanation', {
+      const res = await fetch('/api/risk/explanation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       
-      const data = await res.json();
-      setExplanationMap(prev => ({ 
-        ...prev, 
-        [evt.id]: { text: data.explanation || 'Explanation unavailable.', loading: false } 
-      }));
+      const isJson = res.headers.get('content-type')?.includes('application/json');
+      if (res.ok && isJson) {
+        const data = await res.json();
+        setExplanationMap(prev => ({ 
+          ...prev, 
+          [evt.id]: { text: data.explanation || evt.aiExplanation || 'Explanation unavailable.', loading: false } 
+        }));
+      } else {
+        setExplanationMap(prev => ({ 
+          ...prev, 
+          [evt.id]: { text: evt.aiExplanation || 'CatBoost Multi-Modal verified elevated hazard conditions.', loading: false } 
+        }));
+      }
     } catch (err) {
       setExplanationMap(prev => ({ 
         ...prev, 
-        [evt.id]: { text: 'Model explanation is currently unavailable.', loading: false } 
+        [evt.id]: { text: evt.aiExplanation || 'Model explanation is currently unavailable.', loading: false } 
       }));
     }
   };

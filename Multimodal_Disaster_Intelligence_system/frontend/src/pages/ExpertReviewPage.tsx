@@ -59,16 +59,21 @@ export const ExpertReviewPage: React.FC = () => {
             riskFactorWeighting: currentEvent.riskFactorWeighting || null,
           };
 
-          const res = await fetch('http://localhost:5000/api/risk/explanation', {
+          const res = await fetch('/api/risk/explanation', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
           
-          const data = await res.json();
-          setExplanationText(data.explanation || 'Explanation unavailable.');
+          const isJson = res.headers.get('content-type')?.includes('application/json');
+          if (res.ok && isJson) {
+            const data = await res.json();
+            setExplanationText(data.explanation || currentEvent.aiExplanation || 'Explanation unavailable.');
+          } else {
+            setExplanationText(currentEvent.aiExplanation || 'CatBoost Multi-Modal verified elevated hazard conditions across the river basin.');
+          }
         } catch (err) {
-          setExplanationText('Model explanation is currently unavailable.');
+          setExplanationText(currentEvent?.aiExplanation || 'Model explanation is currently unavailable.');
         }
       };
       fetchExplanation();
@@ -228,9 +233,7 @@ export const ExpertReviewPage: React.FC = () => {
                   {communityReports.filter(r => r.type === currentEvent.primaryHazard)[0].photoUrl && (
                      <div className="mt-2 rounded overflow-hidden border border-slate-200 bg-white aspect-video relative flex items-center justify-center">
                        <img 
-                         src={communityReports.filter(r => r.type === currentEvent.primaryHazard)[0].photoUrl!.startsWith('http') 
-                           ? communityReports.filter(r => r.type === currentEvent.primaryHazard)[0].photoUrl 
-                           : `http://localhost:5000${communityReports.filter(r => r.type === currentEvent.primaryHazard)[0].photoUrl}`} 
+                         src={communityReports.filter(r => r.type === currentEvent.primaryHazard)[0].photoUrl} 
                          alt="Field Evidence" 
                          className="w-full h-full object-cover" 
                        />

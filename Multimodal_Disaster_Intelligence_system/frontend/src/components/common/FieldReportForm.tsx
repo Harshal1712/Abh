@@ -49,7 +49,7 @@ export const FieldReportForm: React.FC<FieldReportFormProps> = ({ onClose, onSub
         formData.append('image', file);
       }
       
-      await axios.post('http://localhost:5000/api/community/report', formData, {
+      await axios.post('/api/community/report', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

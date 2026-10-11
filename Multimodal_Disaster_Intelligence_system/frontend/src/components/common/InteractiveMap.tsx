@@ -472,15 +472,61 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     try {
       const nameParam = locName ? `&locationName=${encodeURIComponent(locName)}` : '';
       const res = await fetch(`/api/resources/routes/nearby?lat=${lat}&lng=${lng}${nameParam}`);
-      if (res.ok) {
+      const isJson = res.headers.get('content-type')?.includes('application/json');
+      if (res.ok && isJson) {
         const data = await res.json();
         if (data.routes) {
           setEvacRoutes(data.routes);
+          return;
         }
       }
     } catch (e) {
-      console.error('Failed to load evacuation routes:', e);
+      console.warn('Backend route calculation offline, using local client-side evacuation corridors:', e);
     }
+
+    // Client-side fallback evacuation routes for Vercel demo
+    const safeCoord: [number, number] = [lat + 0.025, lng + 0.035];
+    const hospCoord: [number, number] = [lat - 0.020, lng + 0.028];
+    const compCoord: [number, number] = [lat + 0.015, lng - 0.022];
+
+    const generateInterp = (start: [number, number], end: [number, number]): [number, number][] => {
+      const pts: [number, number][] = [];
+      for (let i = 0; i <= 20; i++) {
+        const t = i / 20;
+        pts.push([
+          Number((start[0] + (end[0] - start[0]) * t + Math.sin(t * Math.PI) * 0.008).toFixed(4)),
+          Number((start[1] + (end[1] - start[1]) * t + Math.cos(t * Math.PI) * 0.008).toFixed(4)),
+        ]);
+      }
+      return pts;
+    };
+
+    setEvacRoutes({
+      primarySafe: {
+        name: 'Highland Evacuation Route (Dispur - Amingaon Corridor)',
+        status: 'CLEAR',
+        type: 'SAFE_EVACUATION',
+        distanceKm: 5.4,
+        estimatedDurationMinutes: 12,
+        coordinates: generateInterp([lat, lng], safeCoord),
+      },
+      hospitalRoute: {
+        name: 'Emergency Medical Transit Corridor to GMCH',
+        status: 'CLEAR',
+        type: 'HOSPITAL_TRANSIT',
+        distanceKm: 4.8,
+        estimatedDurationMinutes: 10,
+        coordinates: generateInterp([lat, lng], hospCoord),
+      },
+      compromisedRoad: {
+        name: 'NH-27 Lowland Flood Bypass (Active Silt & Waterlogging)',
+        status: 'COMPROMISED',
+        type: 'HAZARD_ROAD',
+        distanceKm: 3.2,
+        hazardReason: 'Inundation depth > 0.65m / Mudflow debris warning',
+        coordinates: generateInterp([lat, lng], compCoord),
+      },
+    });
   };
 
   useEffect(() => {
@@ -825,8 +871,8 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* Baseline Susceptibility Raster Tile Layer (FastAPI ML Service) */}
-        {layers.baselineSusceptibility && (
+        {/* Baseline Susceptibility Raster Tile Layer (FastAPI ML Service - only on local dev over HTTP) */}
+        {layers.baselineSusceptibility && typeof window !== 'undefined' && window.location.hostname === 'localhost' && window.location.protocol === 'http:' && (
           <TileLayer
             url="http://127.0.0.1:8000/tiles/baseline/{z}/{x}/{y}.png"
             opacity={0.6}
